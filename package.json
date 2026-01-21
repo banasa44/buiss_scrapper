@@ -1,0 +1,21 @@
+{
+  "name": "buiss-scrapper",
+  "version": "0.1.0",
+  "description": "InfoJobs offer scraper with scoring and aggregation",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "ts-node -r tsconfig-paths/register src/main.ts",
+    "build": "tsc && tsc-alias",
+    "start": "node dist/main.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsc-alias": "^1.8.8",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {}
+}
