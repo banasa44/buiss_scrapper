@@ -1,15 +1,17 @@
 import { InfoJobsClient } from "@/clients/infojobs";
+import * as logger from "@/logger";
 
 async function main() {
-  console.log("Starting buiss-scrapper...");
+  logger.info("Starting buiss-scrapper...");
+  logger.debug("Debug mode enabled");
 
   const client = new InfoJobsClient();
   const result = client.smoke();
 
-  console.log(result);
+  logger.info("InfoJobsClient smoke test result", { result });
 }
 
 main().catch((error) => {
-  console.error("Fatal error:", error);
+  logger.error("Fatal error", { error: error.message, stack: error.stack });
   process.exit(1);
 });

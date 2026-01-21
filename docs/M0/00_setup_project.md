@@ -29,7 +29,6 @@
 - Only create directories/files that are immediately used (e.g., entrypoint + one module).
 - Wire scripts (`dev`, `test`, `lint` if you want, `build`) and TS config.
 - Set up import alias + barrels if chosen.
-- Add `.env.example` + minimal config loader stub (only for M0 needs).
 - Add minimal logging utility (levels + LOG_LEVEL env), used by entrypoint.
 
 **Desired output:**

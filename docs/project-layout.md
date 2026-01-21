@@ -18,10 +18,15 @@ No monorepo tooling for MVP.
   - **Runtime (dev/prod for MVP):** execute with `ts-node` + `tsconfig-paths/register` so Node resolves `@/...` imports.
 - **Barrel exports:** each directory can expose a public surface via `index.ts` (no deep imports unless needed).
 
-## Types / Contracts
+## Types and Constants
 
-- Centralized shared types live in: `src/types/`
-- Module-specific types may live inside the module if they are not shared.
+- **Types** live under `src/types/` and are aggregated via `src/types/index.ts` (barrel exports only).  
+  Rule: logic files should not start with large type blocks; prefer importing types from `@/types`.
+
+- **Constants** (tables/mappings/tunable values we may want to adjust later) live under `src/constants/` and are aggregated via `src/constants/index.ts` (barrel exports only).  
+  Rule: avoid large constant tables and “magic mapping” objects inside logic files; import them from `@/constants` instead.
+
+- Small inline literals are fine, but anything that is a named mapping/config table should be placed in `src/constants/` for discoverability and consistency.
 
 ## Minimal folder layout (no empty folders unless used)
 
@@ -55,6 +60,14 @@ Aggregator -> DB (company aggregates)
 |
 v
 Sheets Exporter -> Google Sheets (view)
+
+## Logs
+
+We will use a **micro-logger wrapper** (no external logging library for MVP). The wrapper will standardize log levels, allow basic filtering, and make debugging easier without adding framework overhead.
+
+- Implement a small logger module that wraps `console.*` and exposes:
+  - `debug`, `info`, `warn`, `error`
+- Support `LOG_LEVEL` (e.g. `debug | info | warn | error`) to filter output.
 
 ## Notes
 
