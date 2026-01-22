@@ -11,6 +11,11 @@ No monorepo tooling for MVP.
 - Clear separation of concerns is achieved via directories, without monorepo overhead.
 - If the project ever grows into multiple executables, we can later split into a monorepo with minimal refactor.
 
+## Entrypoint Convention
+
+- **Entrypoint:** `src/main.ts`
+- **Rule:** `index.ts` files are **barrel exports only** (`export * from ...`), never executable entrypoints.
+
 ## Import/Export Conventions
 
 - **Path alias:** `@/` points to `src/` (clean imports).
@@ -28,22 +33,25 @@ No monorepo tooling for MVP.
 
 - Small inline literals are fine, but anything that is a named mapping/config table should be placed in `src/constants/` for discoverability and consistency.
 
-## Minimal folder layout (no empty folders unless used)
+## Minimal Folder Layout (no empty folders unless used)
 
+```
 src/
-index.ts # entrypoint (runner)
-types/ # shared types/contracts
-config/ # runtime config loader
-connectors/ # InfoJobs and future sources
-infojobs/
-index.ts
-db/ # SQLite + migrations + repos
-index.ts
-core/ # matching + scoring + aggregation logic
-index.ts
-exporters/ # Google Sheets exporter
-sheets/
-index.ts
+  main.ts          # entrypoint (runner)
+  types/           # shared types/contracts
+  constants/       # tunable constants
+  config/          # runtime config loader
+  clients/         # external data sources (InfoJobs, etc.)
+    infojobs/
+      index.ts
+  db/              # SQLite + migrations + repos
+    index.ts
+  core/            # matching + scoring + aggregation logic
+    index.ts
+  exporters/       # Google Sheets exporter
+    sheets/
+      index.ts
+```
 
 ## Data flow (conceptual)
 
@@ -61,9 +69,52 @@ Aggregator -> DB (company aggregates)
 v
 Sheets Exporter -> Google Sheets (view)
 
+## Clients / Connectors Convention
+
+External data sources are implemented under `src/clients/`.
+
+Each client is responsible **only** for:
+- Authentication
+- HTTP calls
+- Pagination / rate-limit awareness
+- Mapping raw payloads into normalized types
+
+**Clients do not:**
+- Write to DB
+- Contain business logic
+
+## Data Handling Rules (External APIs)
+
+**No-throw policy for external data:**
+
+For data coming from external APIs (e.g. InfoJobs payloads), the system must **never throw** due to a single malformed or incomplete record.
+
+**Behavior:** log + skip item + continue.
+
+`throw` is reserved **only** for:
+- Missing/invalid configuration
+- Authentication failures
+- Fatal initialization errors
+
+## Config & Tunables
+
+Any tunable operational value (timeouts, retry counts, page caps, backoff delays, thresholds) must live in:
+- `src/config/` or
+- `src/constants/`
+
+Avoid hardcoded "magic numbers" inside logic.
+
+## No Placeholders / No Dead Code
+
+Do not create empty folders, stubs, or placeholder implementations "for later".
+
+**Implement code only when it is actually used.**
+
+If intent must be recorded, use a `TODO:` comment instead of a stub file.
+
 ## Logs
 
-We will use a **micro-logger wrapper** (no external logging library for MVP). The wrapper will standardize log levels, allow basic filtering, and make debugging easier without adding framework overhead.
+We use a **micro-logger wrapper** (no external logging library for MVP). The wrapper standardizes log levels, allows basic filtering, and makes debugging easier without framework overhead.
 
 - Implement a small logger module that wraps `console.*` and exposes:
   - `debug`, `info`, `warn`, `error`
