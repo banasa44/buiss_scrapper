@@ -6,6 +6,7 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "baseUrl": ".",
+    // TODO! : Adjust paths as needed, don't use *, now i can't call @clients... i must call @/clients/infojobs
     "paths": {
       "@/*": ["src/*"]
     },
