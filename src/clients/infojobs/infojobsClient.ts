@@ -1,14 +1,36 @@
 /**
  * InfoJobsClient — API client for InfoJobs
- *
- * Skeleton implementation to be expanded with real API calls in next milestone.
+ * 
+ * Implements the JobOffersClient interface for InfoJobs provider.
  */
-export class InfoJobsClient {
+
+import type { JobOffersClient } from "@/interfaces";
+import type {
+  Provider,
+  SearchOffersQuery,
+  SearchOffersResult,
+  JobOfferDetail,
+} from "@/types";
+
+/**
+ * InfoJobs implementation of JobOffersClient
+ */
+export class InfoJobsClient implements JobOffersClient {
+  readonly provider: Provider = "infojobs";
+
   /**
-   * Smoke test method to verify the client is wired correctly.
-   * Will be replaced with real API methods.
+   * Search for job offers matching the given query
    */
-  smoke(): string {
-    return "infojobs client wired";
+  async searchOffers(query: SearchOffersQuery): Promise<SearchOffersResult> {
+    // TODO: Implement searchOffers
+    throw new Error("Not implemented");
+  }
+
+  /**
+   * Get full details for a specific job offer by ID
+   */
+  async getOfferById(id: string): Promise<JobOfferDetail> {
+    // TODO: Implement getOfferById
+    throw new Error("Not implemented");
   }
 }

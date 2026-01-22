@@ -25,7 +25,7 @@ No monorepo tooling for MVP.
 
 ## Types and Constants
 
-- **Types** live under `src/types/` and are aggregated via `src/types/index.ts` (barrel exports only).  
+- **Types** live under `src/types/` and are aggregated via `src/types/index.ts` (barrel exports only).  They must be declared as `type` not as `interface`.
   Rule: logic files should not start with large type blocks; prefer importing types from `@/types`.
 
 - **Constants** (tables/mappings/tunable values we may want to adjust later) live under `src/constants/` and are aggregated via `src/constants/index.ts` (barrel exports only).  

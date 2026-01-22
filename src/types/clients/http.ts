@@ -7,7 +7,7 @@ export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD";
 /**
  * Retry configuration for HTTP requests
  */
-export interface HttpRetryConfig {
+export type HttpRetryConfig = {
   /** Maximum number of attempts (including initial request). Default from constants. */
   maxAttempts?: number;
   /** Base delay in ms for exponential backoff. Default from constants. */
@@ -16,9 +16,9 @@ export interface HttpRetryConfig {
   maxDelayMs?: number;
   /** Maximum time in ms to wait for Retry-After header. Default from constants. */
   maxRetryAfterMs?: number;
-}
+};
 
-export interface HttpRequest {
+export type HttpRequest = {
   method: HttpMethod;
   url: string;
   headers?: Record<string, string>;
@@ -26,16 +26,17 @@ export interface HttpRequest {
   json?: unknown;
   timeoutMs?: number;
   retry?: HttpRetryConfig;
-}
+};
 
-export interface HttpErrorDetails {
+export type HttpErrorDetails = {
   status: number;
   statusText: string;
   url: string;
   bodySnippet?: string;
   headers?: Headers;
-}
+};
 
+// TODO: does this belong here?
 export class HttpError extends Error {
   public readonly status: number;
   public readonly statusText: string;

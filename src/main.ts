@@ -6,9 +6,9 @@ async function main() {
   logger.debug("Debug mode enabled");
 
   const client = new InfoJobsClient();
-  const result = client.smoke();
-
-  logger.info("InfoJobsClient smoke test result", { result });
+  logger.info("InfoJobsClient initialized", { provider: client.provider });
+  
+  // TODO: Add search/detail calls once implemented
 }
 
 main().catch((error) => {
