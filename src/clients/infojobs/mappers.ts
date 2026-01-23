@@ -13,6 +13,10 @@ import type {
   JobOfferMetadata,
   JobOfferSalary,
 } from "@/types/clients/job_offers";
+import type {
+  InfoJobsOfferListItem,
+  InfoJobsOfferDetail,
+} from "@/types/clients/infojobs";
 
 /**
  * Map InfoJobs PD (Program Data) / DictionaryItem to normalized PDItem
@@ -84,46 +88,39 @@ function mapLocation(raw: any): JobOfferLocation | undefined {
  * @param raw - One element from /api/9/offer response offers[] array
  * @returns Normalized job offer summary, or null if required fields are missing
  */
-export function mapInfoJobsOfferListItemToSummary(raw: unknown): JobOfferSummary | null {
-  // Type guard: ensure raw is an object
-  if (!raw || typeof raw !== "object") {
-    return null;
-  }
-
-  const item = raw as Record<string, any>;
-
+export function mapInfoJobsOfferListItemToSummary(raw: InfoJobsOfferListItem): JobOfferSummary | null {
   // Only id is required - without it we can't identify the offer
-  if (!item.id) {
+  if (!raw.id) {
     return null;
   }
 
   const metadata: JobOfferMetadata = {
-    category: mapPDItem(item.category),
-    subcategory: mapPDItem(item.subcategory),
-    contractType: mapPDItem(item.contractType),
-    workDay: mapPDItem(item.workDay),
-    experienceMin: mapPDItem(item.experienceMin),
-    salary: mapSalary(item),
+    category: mapPDItem(raw.category),
+    subcategory: mapPDItem(raw.subcategory),
+    contractType: mapPDItem(raw.contractType),
+    workDay: mapPDItem(raw.workDay),
+    experienceMin: mapPDItem(raw.experienceMin),
+    salary: mapSalary(raw),
   };
 
   return {
     ref: {
       provider: "infojobs",
-      id: item.id,
-      url: item.link,
+      id: raw.id,
+      url: raw.link,
     },
-    title: item.title || "",
+    title: raw.title || "",
     company: {
-      id: item.author?.id,
-      name: item.author?.name,
+      id: raw.author?.id,
+      name: raw.author?.name,
     },
-    publishedAt: item.published,
-    updatedAt: item.updated,
-    location: mapLocation(item),
+    publishedAt: raw.published,
+    updatedAt: raw.updated,
+    location: mapLocation(raw),
     metadata: Object.values(metadata).some((v) => v !== undefined)
       ? metadata
       : undefined,
-    requirementsSnippet: item.requirementMin,
+    requirementsSnippet: raw.requirementMin,
   };
 }
 
@@ -133,52 +130,45 @@ export function mapInfoJobsOfferListItemToSummary(raw: unknown): JobOfferSummary
  * @param raw - Full detail payload from /api/7/offer/{offerId}
  * @returns Normalized job offer detail, or null if required fields are missing
  */
-export function mapInfoJobsOfferDetailToDetail(raw: unknown): JobOfferDetail | null {
-  // Type guard: ensure raw is an object
-  if (!raw || typeof raw !== "object") {
-    return null;
-  }
-
-  const item = raw as Record<string, any>;
-
+export function mapInfoJobsOfferDetailToDetail(raw: InfoJobsOfferDetail): JobOfferDetail | null {
   // Only id is required - without it we can't identify the offer
-  if (!item.id) {
+  if (!raw.id) {
     return null;
   }
 
   // Build metadata from detail fields
   const metadata: JobOfferMetadata = {
-    category: mapPDItem(item.category),
-    subcategory: mapPDItem(item.subcategory),
-    contractType: mapPDItem(item.contractType),
-    workDay: mapPDItem(item.journey), // detail endpoint uses 'journey' instead of 'workDay'
-    experienceMin: mapPDItem(item.experienceMin),
-    salary: mapSalary(item),
+    category: mapPDItem(raw.category),
+    subcategory: mapPDItem(raw.subcategory),
+    contractType: mapPDItem(raw.contractType),
+    workDay: mapPDItem(raw.journey), // detail endpoint uses 'journey' instead of 'workDay'
+    experienceMin: mapPDItem(raw.experienceMin),
+    salary: mapSalary(raw),
   };
 
   return {
     ref: {
       provider: "infojobs",
-      id: item.id,
-      url: item.link,
+      id: raw.id,
+      url: raw.link,
     },
-    title: item.title || "",
+    title: raw.title || "",
     company: {
-      id: item.profile?.id,
-      name: item.profile?.name,
-      hidden: item.profile?.hidden,
+      id: raw.profile?.id,
+      name: raw.profile?.name,
+      hidden: raw.profile?.hidden,
     },
-    publishedAt: item.published,
-    updatedAt: item.updateDate,
-    createdAt: item.creationDate,
-    location: mapLocation(item),
+    publishedAt: raw.published,
+    updatedAt: raw.updateDate,
+    createdAt: raw.creationDate,
+    location: mapLocation(raw),
     metadata: Object.values(metadata).some((v) => v !== undefined)
       ? metadata
       : undefined,
-    requirementsSnippet: item.requirementMin,
-    description: item.description,
-    minRequirements: item.minRequirements,
-    desiredRequirements: item.desiredRequirements,
-    applicationsCount: item.applications,
+    requirementsSnippet: raw.requirementMin,
+    description: raw.description,
+    minRequirements: raw.minRequirements,
+    desiredRequirements: raw.desiredRequirements,
+    applicationsCount: raw.applications,
   };
 }
