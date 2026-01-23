@@ -56,3 +56,8 @@ export const INFOJOBS_DEFAULT_COUNTRY = "espana";
  * Options: "updated-desc", "updated-asc", "relevance-desc", etc.
  */
 export const INFOJOBS_DEFAULT_ORDER = "updated-desc";
+
+/**
+ * Milliseconds per day for date calculations
+ */
+export const INFOJOBS_MS_PER_DAY = 1000 * 60 * 60 * 24;
