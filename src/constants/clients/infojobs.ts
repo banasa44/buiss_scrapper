@@ -1,6 +1,6 @@
 /**
  * InfoJobs client constants — base URLs, endpoint paths, pagination tunables
- * 
+ *
  * These values control how we interact with the InfoJobs API:
  * - base URL and endpoint paths
  * - default page size and caps (max pages, max offers)

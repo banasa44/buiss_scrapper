@@ -1,9 +1,9 @@
 /**
  * InfoJobs raw API response types — minimal shapes for mapping
- * 
+ *
  * These types represent ONLY the fields we actually use from InfoJobs API responses.
  * They are intentionally minimal and focused on what we need for mapping to normalized types.
- * 
+ *
  * Based on research from docs/M0/01_research_validate_IJ_API.md
  */
 

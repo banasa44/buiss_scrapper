@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { InfoJobsClient } from "@/clients/infojobs";
 import * as logger from "@/logger";
 
@@ -7,7 +8,7 @@ async function main() {
 
   const client = new InfoJobsClient();
   logger.info("InfoJobsClient initialized", { provider: client.provider });
-  
+
   // TODO: Add search/detail calls once implemented
 }
 

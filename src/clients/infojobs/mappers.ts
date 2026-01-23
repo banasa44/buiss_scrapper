@@ -1,6 +1,6 @@
 /**
  * InfoJobs API payload mappers — convert InfoJobs raw responses to normalized types
- * 
+ *
  * These functions map from InfoJobs-specific API shapes to our provider-agnostic
  * JobOfferSummary and JobOfferDetail types.
  */
@@ -24,7 +24,7 @@ import type {
  */
 function mapPDItem(raw: any): PDItem | undefined {
   if (!raw) return undefined;
-  
+
   return {
     id: raw.id,
     value: raw.value,
@@ -84,11 +84,13 @@ function mapLocation(raw: any): JobOfferLocation | undefined {
 
 /**
  * Map InfoJobs offer list item to normalized JobOfferSummary
- * 
+ *
  * @param raw - One element from /api/9/offer response offers[] array
  * @returns Normalized job offer summary, or null if required fields are missing
  */
-export function mapInfoJobsOfferListItemToSummary(raw: InfoJobsOfferListItem): JobOfferSummary | null {
+export function mapInfoJobsOfferListItemToSummary(
+  raw: InfoJobsOfferListItem,
+): JobOfferSummary | null {
   // Only id is required - without it we can't identify the offer
   if (!raw.id) {
     return null;
@@ -126,11 +128,13 @@ export function mapInfoJobsOfferListItemToSummary(raw: InfoJobsOfferListItem): J
 
 /**
  * Map InfoJobs offer detail to normalized JobOfferDetail
- * 
+ *
  * @param raw - Full detail payload from /api/7/offer/{offerId}
  * @returns Normalized job offer detail, or null if required fields are missing
  */
-export function mapInfoJobsOfferDetailToDetail(raw: InfoJobsOfferDetail): JobOfferDetail | null {
+export function mapInfoJobsOfferDetailToDetail(
+  raw: InfoJobsOfferDetail,
+): JobOfferDetail | null {
   // Only id is required - without it we can't identify the offer
   if (!raw.id) {
     return null;
