@@ -95,7 +95,9 @@ export class InfoJobsClient implements JobOffersClient {
    * @param updatedSince - ISO 8601 date string
    * @returns InfoJobs sinceDate value or undefined
    */
-  private mapUpdatedSinceToSinceDate(updatedSince?: string): string | undefined {
+  private mapUpdatedSinceToSinceDate(
+    updatedSince?: string,
+  ): string | undefined {
     if (!updatedSince) {
       return undefined;
     }
@@ -103,7 +105,9 @@ export class InfoJobsClient implements JobOffersClient {
     // Parse ISO date
     const date = new Date(updatedSince);
     if (isNaN(date.getTime())) {
-      logger.warn("Invalid updatedSince date format, ignoring filter", { updatedSince });
+      logger.warn("Invalid updatedSince date format, ignoring filter", {
+        updatedSince,
+      });
       return undefined;
     }
 
@@ -136,7 +140,9 @@ export class InfoJobsClient implements JobOffersClient {
 
     // InfoJobs only supports desc ordering; if asc requested, log warning and use desc
     if (sort.direction === "asc") {
-      logger.warn("InfoJobs only supports desc ordering, using desc instead", { sort });
+      logger.warn("InfoJobs only supports desc ordering, using desc instead", {
+        sort,
+      });
     }
 
     // Map field to InfoJobs order value (always desc)
@@ -144,7 +150,10 @@ export class InfoJobsClient implements JobOffersClient {
       return "updated-desc";
     } else if (sort.field === "publishedAt") {
       // InfoJobs doesn't have published-desc, fall back to updated-desc
-      logger.debug("InfoJobs doesn't support publishedAt sort, using updated-desc", { sort });
+      logger.debug(
+        "InfoJobs doesn't support publishedAt sort, using updated-desc",
+        { sort },
+      );
       return "updated-desc";
     }
 
@@ -160,8 +169,14 @@ export class InfoJobsClient implements JobOffersClient {
   private buildListQueryParams(
     query: SearchOffersQuery,
     page: number,
-  ): Record<string, string | number | boolean | Array<string | number | boolean>> {
-    const params: Record<string, string | number | boolean | Array<string | number | boolean>> = {};
+  ): Record<
+    string,
+    string | number | boolean | Array<string | number | boolean>
+  > {
+    const params: Record<
+      string,
+      string | number | boolean | Array<string | number | boolean>
+    > = {};
 
     // Always include country filter for Spain-wide search
     params.country = INFOJOBS_DEFAULT_COUNTRY;
@@ -213,7 +228,9 @@ export class InfoJobsClient implements JobOffersClient {
     });
 
     // Accumulate results across pages
-    const allOffers: NonNullable<ReturnType<typeof mapInfoJobsOfferListItemToSummary>>[] = [];
+    const allOffers: NonNullable<
+      ReturnType<typeof mapInfoJobsOfferListItemToSummary>
+    >[] = [];
     let pagesFetched = 0;
     let totalPages: number | undefined;
     let totalResults: number | undefined;
@@ -257,9 +274,12 @@ export class InfoJobsClient implements JobOffersClient {
 
         // Stop if no offers returned (natural end)
         if (response.offers.length === 0) {
-          logger.debug("InfoJobs returned empty offers array, stopping pagination", {
-            page,
-          });
+          logger.debug(
+            "InfoJobs returned empty offers array, stopping pagination",
+            {
+              page,
+            },
+          );
           break;
         }
 
@@ -275,7 +295,9 @@ export class InfoJobsClient implements JobOffersClient {
             }
             return mapped;
           })
-          .filter((offer): offer is NonNullable<typeof offer> => offer !== null);
+          .filter(
+            (offer): offer is NonNullable<typeof offer> => offer !== null,
+          );
 
         // Add mapped offers to accumulator
         allOffers.push(...pageOffers);
@@ -293,10 +315,13 @@ export class InfoJobsClient implements JobOffersClient {
 
         // Check if we've reached natural end based on totalPages
         if (totalPages !== undefined && page + 1 >= totalPages) {
-          logger.debug("Reached last page from totalPages, stopping pagination", {
-            page: page + 1,
-            totalPages,
-          });
+          logger.debug(
+            "Reached last page from totalPages, stopping pagination",
+            {
+              page: page + 1,
+              totalPages,
+            },
+          );
           break;
         }
       } catch (error) {
@@ -330,7 +355,12 @@ export class InfoJobsClient implements JobOffersClient {
     }
 
     // Check if we stopped due to maxPages cap
-    if (!truncatedBy && pagesFetched >= maxPages && totalPages && pagesFetched < totalPages) {
+    if (
+      !truncatedBy &&
+      pagesFetched >= maxPages &&
+      totalPages &&
+      pagesFetched < totalPages
+    ) {
       truncatedBy = "maxPages";
     }
 
