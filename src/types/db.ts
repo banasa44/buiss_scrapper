@@ -2,32 +2,62 @@
  * Database type definitions
  *
  * Types for database entities and repository interfaces.
- * Aligned with schema in docs/M1/01_define_db_schema.md
+ * Aligned with schema in migrations/0002_company_sources_and_global_companies.sql
  */
 
 /**
- * Company entity (stored in companies table)
+ * Company entity (global, no provider column)
+ * Stored in companies table
  */
 export type Company = {
   id: number;
-  provider: string;
-  provider_company_id: string | null;
-  name: string | null;
+  name_raw: string | null;
+  name_display: string | null;
   normalized_name: string | null;
-  hidden: number | null;
+  website_url: string | null;
+  website_domain: string | null;
   created_at: string;
   updated_at: string;
 };
 
 /**
  * Company upsert input (omit auto-generated fields)
+ * Must have either website_domain or normalized_name for identity
  */
 export type CompanyInput = {
+  name_raw?: string | null;
+  name_display?: string | null;
+  normalized_name?: string | null;
+  website_url?: string | null;
+  website_domain?: string | null;
+};
+
+/**
+ * Company source entity (provider-specific company data)
+ * Stored in company_sources table
+ */
+export type CompanySource = {
+  id: number;
+  company_id: number;
+  provider: string;
+  provider_company_id: string | null;
+  provider_company_url: string | null;
+  hidden: number | null;
+  raw_json: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * Company source upsert input (omit auto-generated fields)
+ */
+export type CompanySourceInput = {
+  company_id: number;
   provider: string;
   provider_company_id?: string | null;
-  name?: string | null;
-  normalized_name?: string | null;
+  provider_company_url?: string | null;
   hidden?: number | null;
+  raw_json?: string | null;
 };
 
 /**

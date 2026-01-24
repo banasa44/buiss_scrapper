@@ -9,6 +9,7 @@ import {
   closeDb,
   smokeTest,
   upsertCompany,
+  upsertCompanySource,
   upsertOffer,
   createRun,
   finishRun,
@@ -26,44 +27,70 @@ function testDb() {
 
   openDb();
 
-  // Test 1: Upsert company with provider_company_id
-  console.log("Test 1: Upsert company with provider_company_id");
+  // Test 1: Upsert company with website_domain (strongest identity)
+  console.log("Test 1: Upsert company with website_domain");
   const companyId1 = upsertCompany({
-    provider: "infojobs",
-    provider_company_id: "test-123",
-    name: "Test Company",
+    name_raw: "Test Company Inc.",
+    name_display: "Test Company",
     normalized_name: "test company",
-    hidden: 0,
+    website_url: "https://testcompany.com",
+    website_domain: "testcompany.com",
   });
   console.log(`  ✓ Created company ID: ${companyId1}`);
 
-  // Test 2: Upsert same company (should return same ID)
+  // Test 2: Upsert same company by domain (should return same ID)
   const companyId2 = upsertCompany({
-    provider: "infojobs",
-    provider_company_id: "test-123",
-    name: "Test Company Updated",
-    normalized_name: "test company",
-    hidden: 0,
+    name_raw: "Test Company Inc. (Updated)",
+    name_display: "Test Company Updated",
+    normalized_name: "test company updated",
+    website_url: "https://testcompany.com",
+    website_domain: "testcompany.com",
   });
   console.log(
     `  ✓ Updated company ID: ${companyId2} (should equal ${companyId1})`,
   );
 
   if (companyId1 !== companyId2) {
-    throw new Error("Company upsert failed: IDs don't match");
+    throw new Error("Company upsert by domain failed: IDs don't match");
   }
 
-  // Test 3: Upsert company with only normalized_name
+  // Test 3: Upsert company with only normalized_name (no domain)
   console.log("\nTest 2: Upsert company with normalized_name only");
   const companyId3 = upsertCompany({
-    provider: "infojobs",
-    name: "Another Company",
+    name_raw: "Another Company Ltd.",
+    name_display: "Another Company",
     normalized_name: "another company",
   });
   console.log(`  ✓ Created company ID: ${companyId3}`);
 
-  // Test 4: Upsert offer
-  console.log("\nTest 3: Upsert offer");
+  // Test 4: Upsert company source for InfoJobs
+  console.log("\nTest 3: Upsert company source");
+  const sourceId1 = upsertCompanySource({
+    company_id: companyId1,
+    provider: "infojobs",
+    provider_company_id: "ij-123",
+    provider_company_url: "https://infojobs.net/company/ij-123",
+    hidden: 0,
+  });
+  console.log(`  ✓ Created company source ID: ${sourceId1}`);
+
+  // Test 5: Upsert same company source (should update)
+  const sourceId2 = upsertCompanySource({
+    company_id: companyId1,
+    provider: "infojobs",
+    provider_company_id: "ij-123",
+    hidden: 1,
+  });
+  console.log(
+    `  ✓ Updated company source ID: ${sourceId2} (should equal ${sourceId1})`,
+  );
+
+  if (sourceId1 !== sourceId2) {
+    throw new Error("Company source upsert failed: IDs don't match");
+  }
+
+  // Test 6: Upsert offer
+  console.log("\nTest 4: Upsert offer");
   const offerId1 = upsertOffer({
     provider: "infojobs",
     provider_offer_id: "offer-456",
@@ -76,7 +103,7 @@ function testDb() {
   });
   console.log(`  ✓ Created offer ID: ${offerId1}`);
 
-  // Test 5: Upsert same offer (should update)
+  // Test 7: Upsert same offer (should update)
   const offerId2 = upsertOffer({
     provider: "infojobs",
     provider_offer_id: "offer-456",
@@ -90,15 +117,15 @@ function testDb() {
     throw new Error("Offer upsert failed: IDs don't match");
   }
 
-  // Test 6: Create ingestion run
-  console.log("\nTest 4: Create and finish ingestion run");
+  // Test 8: Create ingestion run
+  console.log("\nTest 5: Create and finish ingestion run");
   const runId = createRun({
     provider: "infojobs",
     query_fingerprint: "test-query",
   });
   console.log(`  ✓ Created run ID: ${runId}`);
 
-  // Test 7: Finish run
+  // Test 9: Finish run
   finishRun(runId, {
     finished_at: new Date().toISOString(),
     status: "success",
@@ -110,15 +137,30 @@ function testDb() {
   });
   console.log(`  ✓ Finished run ID: ${runId}`);
 
-  // Test 8: Retrieve entities
-  console.log("\nTest 5: Retrieve entities");
+  // Test 10: Retrieve entities
+  console.log("\nTest 6: Retrieve entities");
   const company = getCompanyById(companyId1);
   const offer = getOfferById(offerId1);
   const run = getRunById(runId);
 
-  console.log(`  ✓ Retrieved company: ${company?.name}`);
+  console.log(`  ✓ Retrieved company: ${company?.name_display}`);
   console.log(`  ✓ Retrieved offer: ${offer?.title}`);
   console.log(`  ✓ Retrieved run: ${run?.status}`);
+
+  // Test 11: Test that missing identity throws error
+  console.log("\nTest 7: Verify missing identity throws error");
+  try {
+    upsertCompany({
+      name_raw: "No Identity Company",
+    });
+    throw new Error("Should have thrown error for missing identity");
+  } catch (err: any) {
+    if (err.message.includes("Cannot upsert company")) {
+      console.log(`  ✓ Correctly threw error: ${err.message.split(".")[0]}`);
+    } else {
+      throw err;
+    }
+  }
 
   closeDb();
 

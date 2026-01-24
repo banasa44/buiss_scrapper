@@ -17,6 +17,12 @@ import type {
   InfoJobsOfferListItem,
   InfoJobsOfferDetail,
 } from "@/types/clients/infojobs";
+import {
+  normalizeCompanyName,
+  pickCompanyWebsiteUrl,
+  extractWebsiteDomain,
+} from "@/utils";
+import { debug } from "@/logger";
 
 /**
  * Map InfoJobs PD (Program Data) / DictionaryItem to normalized PDItem
@@ -115,6 +121,11 @@ export function mapInfoJobsOfferListItemToSummary(
     company: {
       id: raw.author?.id,
       name: raw.author?.name,
+      nameRaw: raw.author?.name,
+      normalizedName: raw.author?.name
+        ? normalizeCompanyName(raw.author?.name)
+        : undefined,
+      // List endpoint doesn't provide website fields - leave undefined
     },
     publishedAt: raw.published,
     updatedAt: raw.updated,
@@ -150,6 +161,27 @@ export function mapInfoJobsOfferDetailToDetail(
     salary: mapSalary(raw),
   };
 
+  // Extract company website URL and domain (detail endpoint only)
+  const rawWebsiteUrl = raw.profile
+    ? pickCompanyWebsiteUrl({
+        corporateWebsiteUrl: raw.profile.corporateWebsiteUrl,
+        websiteUrl: raw.profile.websiteUrl,
+        web: raw.profile.web,
+      })
+    : null;
+
+  const websiteDomain = rawWebsiteUrl
+    ? extractWebsiteDomain(rawWebsiteUrl)
+    : null;
+
+  // Log when website URL is present but domain extraction fails (likely InfoJobs internal URL)
+  if (rawWebsiteUrl && !websiteDomain) {
+    debug("InfoJobs mapper: website URL filtered out (likely internal)", {
+      offerId: raw.id,
+      url: rawWebsiteUrl,
+    });
+  }
+
   return {
     ref: {
       provider: "infojobs",
@@ -160,6 +192,12 @@ export function mapInfoJobsOfferDetailToDetail(
     company: {
       id: raw.profile?.id,
       name: raw.profile?.name,
+      nameRaw: raw.profile?.name,
+      normalizedName: raw.profile?.name
+        ? normalizeCompanyName(raw.profile.name)
+        : undefined,
+      websiteUrl: rawWebsiteUrl || undefined,
+      websiteDomain: websiteDomain || undefined,
       hidden: raw.profile?.hidden,
     },
     publishedAt: raw.published,

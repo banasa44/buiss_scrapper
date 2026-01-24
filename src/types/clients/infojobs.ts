@@ -32,6 +32,9 @@ type InfoJobsProfile = {
   id?: string;
   name?: string;
   hidden?: boolean;
+  web?: string;
+  websiteUrl?: string;
+  corporateWebsiteUrl?: string;
 };
 
 /**

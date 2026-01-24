@@ -35,3 +35,57 @@ Define deterministic rules for identifying “the same company” across runs an
 
 - Rules are implementable deterministically.
 - No fuzzy matching in MVP (unless explicitly chosen).
+
+## RESOLUTION
+
+We will use a **deterministic, evidence-ordered identity strategy** for companies.
+
+### Identity evidence order (strong → weak)
+
+1. **Website / domain (when available)**
+   - If we have a usable `website_url`, derive `website_domain` (normalized).
+   - **Identity key = `domain:<website_domain>`**.
+   - This is the strongest cross-run / cross-source signal and avoids name-variant duplicates.
+
+2. **Normalized company name (when website/domain is missing)**
+   - Compute `normalized_name` from the best available company name string.
+   - **Identity key = `name:<normalized_name>`**.
+   - Exact match only (no fuzzy).
+
+3. **Raw company name (last resort input for normalization)**
+   - If only raw `name` is available, we still compute `normalized_name` from it.
+   - If we cannot obtain any name-like string at all → **skip offer** (log + counter). We do not create “unknown company” rows.
+
+### Normalization rules (initial)
+
+- trim
+- lowercase
+- collapse repeated whitespace to single spaces
+- (optional but recommended) strip accents/diacritics for stability
+- remove trailing legal suffix noise when clearly present (e.g., `sl`, `s.l.`, `slu`, `sa`, `s.a.`) — keep this conservative and documented
+- no fuzzy matching, no location hints
+
+### DB implications (high-level)
+
+- Companies table must support:
+  - `website_url` (nullable)
+  - `website_domain` (nullable) + UNIQUE index when not null
+  - `name_raw` (nullable)
+  - `normalized_name` (nullable) + UNIQUE index (or at least indexed) for deterministic attach
+
+---
+
+## TODO (Refactor tasks required)
+
+1. **Inspect provider APIs (starting with InfoJobs)**
+   - Confirm which company fields exist (especially website-related fields).
+   - Record findings in the relevant M0 research doc updates if needed.
+
+2. **Update our provider-agnostic types + mappers**
+   - Add optional company fields needed for identity evidence (at minimum `website_url` / `website_domain` and `name_raw` / `normalized_name`).
+   - Keep these fields **generic** (not InfoJobs-specific): the provider API is only inspiration; our types must work for other sources too.
+
+3. **Update DB schema**
+   - Add/adjust `companies` columns required by the identity rules:
+     - `website_url`, `website_domain`, `name_raw`, `normalized_name`
+   - Add the minimal indexes/constraints that enforce deterministic dedupe (e.g., unique domain when present, unique normalized_name otherwise).

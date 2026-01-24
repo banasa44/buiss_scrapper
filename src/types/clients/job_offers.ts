@@ -1,6 +1,6 @@
 /**
  * Job offer type definitions — provider-agnostic normalized types
- * 
+ *
  * These types represent job offers from any provider (InfoJobs, LinkedIn, etc.)
  * in a unified format for our internal processing pipeline.
  */
@@ -37,6 +37,10 @@ export type PDItem = {
 export type JobOfferCompany = {
   id?: string;
   name?: string;
+  nameRaw?: string;
+  normalizedName?: string;
+  websiteUrl?: string;
+  websiteDomain?: string;
   hidden?: boolean;
 };
 
@@ -123,19 +127,19 @@ export type SearchSort = {
 export type SearchOffersQuery = {
   /** Free-text search query */
   text?: string;
-  
+
   /** Filter by update date (ISO 8601 string) */
   updatedSince?: string;
-  
+
   /** Sort configuration */
   sort?: SearchSort;
-  
+
   /** Results per page */
   pageSize?: number;
-  
+
   /** Maximum pages to fetch (cap) */
   maxPages?: number;
-  
+
   /** Maximum total offers to fetch (cap) */
   maxOffers?: number;
 };
@@ -151,19 +155,19 @@ export type TruncationReason = "maxPages" | "maxOffers" | "error";
 export type SearchMeta = {
   /** Provider that executed the search */
   provider: Provider;
-  
+
   /** Number of pages fetched */
   pagesFetched: number;
-  
+
   /** Number of offers returned */
   offersFetched: number;
-  
+
   /** Total pages available (if known) */
   totalPages?: number;
-  
+
   /** Total results available (if known) */
   totalResults?: number;
-  
+
   /** Reason pagination stopped early (if applicable) */
   truncatedBy?: TruncationReason;
 };
