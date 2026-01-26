@@ -12,11 +12,9 @@ import type {
   JobOfferLocation,
   JobOfferMetadata,
   JobOfferSalary,
-} from "@/types/clients/job_offers";
-import type {
   InfoJobsOfferListItem,
   InfoJobsOfferDetail,
-} from "@/types/clients/infojobs";
+} from "@/types";
 import {
   normalizeCompanyName,
   pickCompanyWebsiteUrl,
@@ -170,13 +168,23 @@ export function mapInfoJobsOfferDetailToDetail(
       })
     : null;
 
-  const websiteDomain = rawWebsiteUrl
+  // Extract domain and filter out InfoJobs internal domains
+  let websiteDomain = rawWebsiteUrl
     ? extractWebsiteDomain(rawWebsiteUrl)
     : null;
 
-  // Log when website URL is present but domain extraction fails (likely InfoJobs internal URL)
+  // InfoJobs-specific: reject internal InfoJobs domains (not useful for company identity)
+  if (websiteDomain && websiteDomain.includes("infojobs.")) {
+    debug("InfoJobs mapper: filtering out internal InfoJobs domain", {
+      offerId: raw.id,
+      domain: websiteDomain,
+    });
+    websiteDomain = null;
+  }
+
+  // Log when website URL is present but domain extraction fails
   if (rawWebsiteUrl && !websiteDomain) {
-    debug("InfoJobs mapper: website URL filtered out (likely internal)", {
+    debug("InfoJobs mapper: website URL filtered out (malformed or internal)", {
       offerId: raw.id,
       url: rawWebsiteUrl,
     });

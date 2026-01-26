@@ -22,7 +22,10 @@ export type HttpRequest = {
   method: HttpMethod;
   url: string;
   headers?: Record<string, string>;
-  query?: Record<string, string | number | boolean | Array<string | number | boolean>>;
+  query?: Record<
+    string,
+    string | number | boolean | Array<string | number | boolean>
+  >;
   json?: unknown;
   timeoutMs?: number;
   retry?: HttpRetryConfig;
@@ -35,31 +38,3 @@ export type HttpErrorDetails = {
   bodySnippet?: string;
   headers?: Headers;
 };
-
-// TODO: does this belong here?
-export class HttpError extends Error {
-  public readonly status: number;
-  public readonly statusText: string;
-  public readonly url: string;
-  public readonly bodySnippet?: string;
-  public readonly headers?: Headers;
-
-  constructor(details: HttpErrorDetails) {
-    super(
-      `HTTP ${details.status} ${details.statusText} - ${details.url}${
-        details.bodySnippet ? ` - ${details.bodySnippet}` : ""
-      }`,
-    );
-    this.name = "HttpError";
-    this.status = details.status;
-    this.statusText = details.statusText;
-    this.url = details.url;
-    this.bodySnippet = details.bodySnippet;
-    this.headers = details.headers;
-
-    // Maintain proper stack trace for where our error was thrown (only available on V8)
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, HttpError);
-    }
-  }
-}

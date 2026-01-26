@@ -50,10 +50,12 @@ export function normalizeCompanyName(raw: string): string {
  * Returns lowercase hostname with leading "www." stripped.
  * Returns null if:
  * - URL is malformed/unparseable
- * - Domain is clearly an InfoJobs internal domain (infojobs.*)
  * - Hostname is missing or invalid
  *
- * @param url - Full URL string (may be external company website or InfoJobs profile)
+ * Note: This function is provider-agnostic. Provider-specific domain filtering
+ * (e.g., rejecting internal provider domains) should be done in the mapper layer.
+ *
+ * @param url - Full URL string
  * @returns Normalized domain string or null if not usable
  */
 export function extractWebsiteDomain(url: string): string | null {
@@ -63,11 +65,6 @@ export function extractWebsiteDomain(url: string): string | null {
     // Parse URL (throws on malformed URLs)
     const parsed = new URL(url.trim());
     let hostname = parsed.hostname.toLowerCase();
-
-    // Reject InfoJobs internal domains
-    if (hostname.includes("infojobs.")) {
-      return null;
-    }
 
     // Strip leading "www."
     if (hostname.startsWith("www.")) {

@@ -3,8 +3,8 @@
  * Supports timeouts, query params, retries with exponential backoff, and structured error handling
  */
 
-import type { HttpRequest } from "@/types/clients/http";
-import { HttpError } from "@/types/clients/http";
+import type { HttpRequest } from "@/types";
+import { HttpError } from "./httpError";
 import {
   DEFAULT_HTTP_TIMEOUT_MS,
   DEFAULT_JSON_HEADERS,
@@ -23,7 +23,10 @@ import * as logger from "@/logger";
  */
 function buildUrl(
   baseUrl: string,
-  query?: Record<string, string | number | boolean | Array<string | number | boolean>>,
+  query?: Record<
+    string,
+    string | number | boolean | Array<string | number | boolean>
+  >,
 ): string {
   if (!query || Object.keys(query).length === 0) {
     return baseUrl;
@@ -45,7 +48,9 @@ function buildUrl(
 /**
  * Extract a snippet of the error response body for debugging
  */
-async function extractBodySnippet(response: Response): Promise<string | undefined> {
+async function extractBodySnippet(
+  response: Response,
+): Promise<string | undefined> {
   try {
     const text = await response.text();
     if (!text) {
@@ -220,7 +225,10 @@ async function performRequest<T>(
 
     // Check content-type before parsing JSON
     const contentType = response.headers.get("content-type");
-    const isJson = contentType && (contentType.includes("application/json") || contentType.includes("+json"));
+    const isJson =
+      contentType &&
+      (contentType.includes("application/json") ||
+        contentType.includes("+json"));
 
     if (!isJson) {
       logger.warn("Non-JSON response received", {
@@ -268,16 +276,16 @@ async function performRequest<T>(
 
 /**
  * Perform an HTTP request with timeout, retries, and error handling
- * 
+ *
  * Retries are only performed for idempotent methods (GET, HEAD) on:
  * - Network errors (no response received)
  * - Timeout errors
  * - HTTP 408 (Request Timeout)
  * - HTTP 429 (Too Many Requests) - respects Retry-After header
  * - HTTP 5xx (Server errors)
- * 
+ *
  * Uses exponential backoff with jitter to avoid thundering herd.
- * 
+ *
  * @template T - Expected response type
  * @param req - HTTP request configuration
  * @returns Parsed JSON response of type T
@@ -292,7 +300,8 @@ export async function httpRequest<T>(req: HttpRequest): Promise<T> {
   const maxAttempts = req.retry?.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
   const baseDelayMs = req.retry?.baseDelayMs ?? DEFAULT_BASE_DELAY_MS;
   const maxDelayMs = req.retry?.maxDelayMs ?? DEFAULT_MAX_DELAY_MS;
-  const maxRetryAfterMs = req.retry?.maxRetryAfterMs ?? DEFAULT_MAX_RETRY_AFTER_MS;
+  const maxRetryAfterMs =
+    req.retry?.maxRetryAfterMs ?? DEFAULT_MAX_RETRY_AFTER_MS;
 
   let lastError: unknown;
 
@@ -336,7 +345,10 @@ export async function httpRequest<T>(req: HttpRequest): Promise<T> {
         attempt,
         maxAttempts,
         delayMs,
-        reason: error instanceof HttpError ? `status ${error.status}` : (error as Error).name,
+        reason:
+          error instanceof HttpError
+            ? `status ${error.status}`
+            : (error as Error).name,
       });
 
       // Wait before retrying
