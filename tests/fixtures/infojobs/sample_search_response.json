@@ -1,0 +1,66 @@
+{
+  "currentPage": 1,
+  "pageSize": 1,
+  "totalResults": 23868,
+  "currentResults": 1,
+  "totalPages": 114,
+  "offers": [
+    {
+      "id": "0bb014b42f407ca6e988dc789f5a5a",
+      "title": "Offer Test",
+      "province": {
+        "id": 40,
+        "value": "Pontevedra"
+      },
+      "city": "Galicia",
+      "link": "https://www.infojobs.net/galicia/offer-test/of-i0000000000000000000000000000",
+      "category": {
+        "id": 10,
+        "value": "Administración de empresas"
+      },
+      "contractType": {
+        "id": 1,
+        "value": "Indefinido"
+      },
+      "subcategory": {
+        "id": 3008,
+        "value": "Organización de la empresa"
+      },
+      "salaryMin": {
+        "id": 0,
+        "value": ""
+      },
+      "salaryMax": {
+        "id": 0,
+        "value": ""
+      },
+      "salaryPeriod": {
+        "id": 0,
+        "value": ""
+      },
+      "experienceMin": {
+        "id": 5,
+        "value": "Más de 5 años"
+      },
+      "workDay": {
+        "id": 1,
+        "value": "Completa"
+      },
+      "study": {
+        "id": 140,
+        "value": "Licenciado"
+      },
+      "published": "2012-09-21T10:26:23.000+0000",
+      "updated": "2012-09-21T10:26:23.000+0000",
+      "author": {
+        "id": "967153524526202350563215654828",
+        "name": "Improven Consultores",
+        "uri": "http://www.infojobs.net/improven-consultores/em-i00000000"
+      },
+      "requirementMin": "El perfil se corresponde con el de un/a profesional con titulación superior en ADE, económicas o similar, con formación de postgrado en finanzas y/o gestión (MBA, PDD, etc.) y con sólida experiencia en departamentos administrativo/financieros. Se valorará positivamente experiencia en el manejo de ERP's así como un excelente nivel de idioma inglés hablado y escrito.",
+      "bold": false,
+      "urgent": false,
+      "applications": "0"
+    }
+  ]
+}
