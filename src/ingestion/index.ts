@@ -16,3 +16,5 @@ export { persistOffer } from "./offerPersistence";
 export { ingestOffers } from "./ingestOffers";
 
 export { runOfferBatchIngestion } from "./runOfferBatch";
+
+export { runInfojobsPipeline } from "./pipelines";

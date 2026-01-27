@@ -80,3 +80,37 @@ export type RunOfferBatchResult = {
   result: IngestOffersResult;
   counters: Partial<RunCounters>;
 };
+
+/**
+ * Input for InfoJobs pipeline
+ * Supports dependency injection for testing
+ */
+export type RunInfojobsPipelineInput = {
+  /** Optional preconfigured InfoJobsClient for testing */
+  client?: {
+    readonly provider: Provider;
+    searchOffers(
+      query: import("@/types/clients/job_offers").SearchOffersQuery,
+    ): Promise<import("@/types/clients/job_offers").SearchOffersResult>;
+  };
+  /** Text search query (optional) */
+  text?: string;
+  /** Filter by update date (ISO 8601 string) */
+  updatedSince?: string;
+  /** Maximum number of pages to fetch (default from constants) */
+  maxPages?: number;
+  /** Maximum number of offers to fetch (default from constants) */
+  maxOffers?: number;
+};
+
+/**
+ * Result of InfoJobs pipeline execution
+ */
+export type RunInfojobsPipelineResult = {
+  /** Run ID from lifecycle */
+  runId: number;
+  /** Ingestion result (processed, upserted, skipped, failed) */
+  ingestResult: IngestOffersResult;
+  /** Final counters snapshot */
+  counters: Partial<RunCounters>;
+};
