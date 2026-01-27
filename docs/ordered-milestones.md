@@ -19,6 +19,8 @@ Goal: persist offers/companies and guarantee idempotent reruns before scoring.
 - [BUILD] Implement ingestion and dedupe
 - [ITEST] Add DB migration smoke test
 - [UTEST] Add dedupe/idempotency tests
+  TODO:
+  **Note:** M1.4-E (optional raw_json flag) has been **deferred** to a future milestone. M1 uses `raw_json = null` throughout.
 
 ## M2 — Catalog + matcher/scorer (signal v0 with tests)
 

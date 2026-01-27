@@ -63,3 +63,16 @@ When revisiting, consider:
 - Fill-only vs overwrite semantics
 - Storage overhead implications
 - Whether to apply to both `offers.raw_json` and `company_sources.raw_json`
+
+---
+
+## Deferred
+
+**M1.4-E (STORE_RAW_JSON flag):** Originally planned as an optional feature to conditionally store raw provider payloads. **Status: Deferred to future milestone.**
+
+**Rationale for deferral:**
+
+- M1 focus is on core ingestion correctness, not debugging features
+- Raw storage adds complexity without immediate MVP value
+- Current `raw_json = null` policy keeps implementation simple and predictable
+- Can be reconsidered once core pipeline is stable and actual debugging needs are identified

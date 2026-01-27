@@ -40,6 +40,7 @@ Any implementation task must comply with this document.
 - Live under `src/types/`
 - **No logic-file types:** Do not declare `type`/`interface` in logic files (anything outside `src/types/`).  
   If a function needs a result/input type, it must live under `src/types/` and be imported from there.
+- No duplicate types / reuse existing types: before adding a new type, search for an existing one that matches the concept (e.g., counters).
 - Represent **data shapes** (inputs / outputs / persisted models)
 - Declared using `type`, not `interface`
 - Canonical domain types live here

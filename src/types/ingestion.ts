@@ -42,3 +42,32 @@ export type PersistOfferInput = {
   offer: JobOfferSummary | JobOfferDetail;
   provider: Provider;
 };
+
+import type { RunCounters } from "@/types/db";
+
+/**
+ * Structural type for run accumulator compatibility
+ * Uses Partial<RunCounters> to allow incrementing any subset of counters
+ */
+export type RunAccumulatorLike = {
+  counters: Partial<RunCounters>;
+};
+
+/**
+ * Input for batch offer ingestion
+ */
+export type IngestOffersInput = {
+  provider: Provider;
+  offers: (JobOfferSummary | JobOfferDetail)[];
+  acc?: RunAccumulatorLike;
+};
+
+/**
+ * Result of batch offer ingestion
+ */
+export type IngestOffersResult = {
+  processed: number;
+  upserted: number;
+  skipped: number;
+  failed: number;
+};

@@ -62,9 +62,10 @@ Given `JobOfferCompany` + provider context, upsert into `companies` (global iden
 
 Upsert into `offers` by `(provider, provider_offer_id)` and update mutable fields safely (no magic numbers, no throws on single bad record). Ensure the offer references the resolved `company_id`.
 
-### M1.4-E — Optional: store raw_json under a flag
+### M1.4-E — **DEFERRED:** Store raw_json under a flag
 
-If `STORE_RAW_JSON=1`, store/overwrite `raw_json` for debugging; otherwise keep it null. Ensure this is bounded (no history).
+**Status:** Deferred to future milestone.  
+**M1 behavior:** `raw_json` must remain `null` for all ingestion operations.
 
 ### M1.4-F — Add idempotency + “bad record” tests
 
@@ -74,3 +75,4 @@ Add minimal tests to prove: (1) ingest same batch twice → no duplicates, (2) u
 
 - No matcher/scorer and no match-based gating here (belongs to M2).
 - No pruning/cleanup policies here (can be added later once scoring exists).
+- **No raw_json retention in M1:** All ingestion operations must use `raw_json = null`. Raw payload storage is deferred to future milestones.

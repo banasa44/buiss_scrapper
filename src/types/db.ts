@@ -153,10 +153,14 @@ export type IngestionRunUpdate = {
 /**
  * Run counters for lifecycle helpers
  * Subset of IngestionRunUpdate for counter fields only
+ * Includes offer-specific counters for runtime tracking
  */
 export type RunCounters = {
   pages_fetched?: number | null;
   offers_fetched?: number | null;
+  offers_upserted?: number | null;
+  offers_skipped?: number | null;
+  offers_failed?: number | null;
   errors_count?: number | null;
 };
 
