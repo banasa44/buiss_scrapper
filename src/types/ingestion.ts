@@ -71,3 +71,12 @@ export type IngestOffersResult = {
   skipped: number;
   failed: number;
 };
+
+/**
+ * Result of a run-wrapped batch ingestion
+ */
+export type RunOfferBatchResult = {
+  runId: number;
+  result: IngestOffersResult;
+  counters: Partial<RunCounters>;
+};
