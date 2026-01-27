@@ -12,12 +12,13 @@ import type {
   JobOfferDetail,
   SearchSort,
   TruncationReason,
+  HttpRequest,
 } from "@/types";
 import type {
   InfoJobsOfferDetail,
   InfoJobsListResponse,
 } from "@/types/clients/infojobs";
-import { httpRequest } from "@/clients/http";
+import { httpRequest as defaultHttpRequest } from "@/clients/http";
 import {
   INFOJOBS_BASE_URL,
   INFOJOBS_DETAIL_ENDPOINT_PATH,
@@ -37,6 +38,28 @@ import {
 import * as logger from "@/logger";
 
 /**
+ * HTTP request function type for dependency injection
+ */
+type HttpRequestFn = <T>(req: HttpRequest) => Promise<T>;
+
+export interface InfoJobsClientConfig {
+  /**
+   * Optional HTTP request function (for testing/mocking)
+   * Defaults to production httpRequest implementation
+   */
+  httpRequest?: HttpRequestFn;
+
+  /**
+   * Optional credentials (for testing)
+   * Defaults to process.env.IJ_CLIENT_ID / IJ_CLIENT_SECRET
+   */
+  credentials?: {
+    clientId: string;
+    clientSecret: string;
+  };
+}
+
+/**
  * InfoJobs implementation of JobOffersClient
  */
 export class InfoJobsClient implements JobOffersClient {
@@ -45,12 +68,19 @@ export class InfoJobsClient implements JobOffersClient {
   private readonly clientId: string;
   private readonly clientSecret: string;
   private authHeader: string | null = null;
+  private readonly httpRequest: HttpRequestFn;
 
-  constructor() {
-    // Validate required env vars - fail fast if missing
-    this.clientId = process.env.IJ_CLIENT_ID || "";
-    this.clientSecret = process.env.IJ_CLIENT_SECRET || "";
+  constructor(config?: InfoJobsClientConfig) {
+    // Use provided credentials or fall back to env vars
+    if (config?.credentials) {
+      this.clientId = config.credentials.clientId;
+      this.clientSecret = config.credentials.clientSecret;
+    } else {
+      this.clientId = process.env.IJ_CLIENT_ID || "";
+      this.clientSecret = process.env.IJ_CLIENT_SECRET || "";
+    }
 
+    // Validate credentials are present
     if (!this.clientId || !this.clientSecret) {
       const missing: string[] = [];
       if (!this.clientId) missing.push("IJ_CLIENT_ID");
@@ -60,6 +90,9 @@ export class InfoJobsClient implements JobOffersClient {
           `Please set these environment variables.`,
       );
     }
+
+    // Use injected httpRequest or default to production implementation
+    this.httpRequest = config?.httpRequest ?? defaultHttpRequest;
 
     logger.debug("InfoJobsClient initialized");
   }
@@ -245,7 +278,7 @@ export class InfoJobsClient implements JobOffersClient {
         const queryParams = this.buildListQueryParams(query, page);
 
         // Fetch current page
-        const response = await httpRequest<InfoJobsListResponse>({
+        const response = await this.httpRequest<InfoJobsListResponse>({
           method: "GET",
           url,
           headers: {
@@ -404,7 +437,7 @@ export class InfoJobsClient implements JobOffersClient {
     logger.debug("Fetching InfoJobs offer detail", { id });
 
     try {
-      const rawDetail = await httpRequest<InfoJobsOfferDetail>({
+      const rawDetail = await this.httpRequest<InfoJobsOfferDetail>({
         method: "GET",
         url,
         headers: {
