@@ -5,19 +5,28 @@
   "main": "dist/main.js",
   "scripts": {
     "dev": "ts-node -r tsconfig-paths/register src/main.ts",
-    "build": "tsc && tsc-alias",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "start": "node dist/main.js",
     "db:migrate": "ts-node -r tsconfig-paths/register src/db/migrate.ts",
-    "db:verify": "ts-node -r tsconfig-paths/register src/db/verify.ts"
+    "db:verify": "ts-node -r tsconfig-paths/register src/db/verify.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run tests/unit --passWithNoTests",
+    "test:integration": "vitest run tests/integration --passWithNoTests",
+    "test:e2e": "vitest run tests/e2e --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "typecheck:tests": "tsc --noEmit -p tsconfig.test.json"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/node": "^20.11.0",
+    "@types/node": "^20.19.30",
+    "@vitest/coverage-v8": "^4.0.18",
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.8",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^4.0.18"
   },
   "dependencies": {
     "@types/better-sqlite3": "^7.6.13",

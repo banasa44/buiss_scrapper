@@ -66,3 +66,13 @@ export function getDb(): Database.Database {
   }
   return db;
 }
+
+/**
+ * Set database connection for testing purposes only.
+ * This allows injecting a test database into the singleton.
+ *
+ * @internal Test use only - do not use in production code
+ */
+export function setDbForTesting(testDb: Database.Database | null): void {
+  db = testDb;
+}
