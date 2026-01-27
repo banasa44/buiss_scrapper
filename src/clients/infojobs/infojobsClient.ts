@@ -10,11 +10,13 @@ import type {
   SearchOffersQuery,
   SearchOffersResult,
   JobOfferDetail,
-  InfoJobsOfferDetail,
-  InfoJobsListResponse,
   SearchSort,
   TruncationReason,
 } from "@/types";
+import type {
+  InfoJobsOfferDetail,
+  InfoJobsListResponse,
+} from "@/types/clients/infojobs";
 import { httpRequest } from "@/clients/http";
 import {
   INFOJOBS_BASE_URL,

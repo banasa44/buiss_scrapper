@@ -17,6 +17,12 @@ import {
   getOfferById,
   getRunById,
 } from "@/db";
+import {
+  startRun as lifecycleStartRun,
+  finishRun as lifecycleFinishRun,
+  withRun,
+} from "@/ingestion";
+import type { Provider } from "@/types";
 
 function testDb() {
   console.log("\n=== Database Layer Verification ===\n");
@@ -167,6 +173,70 @@ function testDb() {
   console.log("\n=== All tests passed! ===\n");
 }
 
+/**
+ * Test run lifecycle helpers (startRun, finishRun, withRun)
+ */
+async function testRunLifecycle() {
+  console.log("\n=== Run Lifecycle Verification ===\n");
+
+  openDb();
+
+  // Fixture data
+  const provider: Provider = "infojobs";
+
+  // Test 8: startRun + finishRun
+  console.log("Test 8: Run lifecycle helpers");
+  const runId = lifecycleStartRun(provider);
+  lifecycleFinishRun(runId, "success", {
+    pages_fetched: 5,
+    offers_fetched: 100,
+  });
+  const run = getRunById(runId);
+  if (run?.status !== "success" || run?.pages_fetched !== 5) {
+    throw new Error("Run lifecycle finishRun failed");
+  }
+  console.log(
+    `  ✓ startRun + finishRun: status=${run.status}, pages=${run.pages_fetched}`,
+  );
+
+  // Test 9: withRun success path
+  let successRunId: number | null = null;
+  const result = await withRun(provider, undefined, async (rid) => {
+    successRunId = rid;
+    return "ok";
+  });
+  const successRun = successRunId ? getRunById(successRunId) : null;
+  if (result !== "ok" || successRun?.status !== "success") {
+    throw new Error("withRun success path failed");
+  }
+  console.log(`  ✓ withRun (success): status=${successRun.status}`);
+
+  // Test 10: withRun failure path
+  let failRunId: number | null = null;
+  let caughtError = false;
+  try {
+    await withRun(provider, undefined, async (rid) => {
+      failRunId = rid;
+      throw new Error("Simulated");
+    });
+  } catch {
+    caughtError = true;
+  }
+  const failRun = failRunId ? getRunById(failRunId) : null;
+  if (!caughtError || failRun?.status !== "failure") {
+    throw new Error("withRun failure path did not finalize correctly");
+  }
+  console.log(
+    `  ✓ withRun (failure): status=${failRun.status}, error rethrown`,
+  );
+
+  closeDb();
+}
+
 if (require.main === module) {
   testDb();
+  testRunLifecycle().catch((err) => {
+    console.error("Run lifecycle verification failed:", err);
+    process.exit(1);
+  });
 }

@@ -12,9 +12,11 @@ import type {
   JobOfferLocation,
   JobOfferMetadata,
   JobOfferSalary,
+} from "@/types";
+import type {
   InfoJobsOfferListItem,
   InfoJobsOfferDetail,
-} from "@/types";
+} from "@/types/clients/infojobs";
 import {
   normalizeCompanyName,
   pickCompanyWebsiteUrl,

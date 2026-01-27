@@ -132,17 +132,40 @@ export type IngestionRunInput = {
 };
 
 /**
+ * Run status for lifecycle helpers
+ */
+export type RunStatus = "success" | "failure";
+
+/**
  * Ingestion run finish/update input
  */
 export type IngestionRunUpdate = {
   finished_at?: string;
-  status?: string | null;
+  status?: RunStatus | null;
   pages_fetched?: number | null;
   offers_fetched?: number | null;
   requests_count?: number | null;
   http_429_count?: number | null;
   errors_count?: number | null;
   notes?: string | null;
+};
+
+/**
+ * Run counters for lifecycle helpers
+ * Subset of IngestionRunUpdate for counter fields only
+ */
+export type RunCounters = {
+  pages_fetched?: number | null;
+  offers_fetched?: number | null;
+  errors_count?: number | null;
+};
+
+/**
+ * Mutable accumulator for tracking counters during run execution
+ * Passed to withRun() callback so counters persist even on failure
+ */
+export type RunAccumulator = {
+  counters: RunCounters;
 };
 
 /**
