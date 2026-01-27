@@ -27,8 +27,8 @@ Any implementation task must comply with this document.
 
 ## Imports
 
-- Use path alias `@/` → `src/`
-- No relative import chains (`../../..`)
+- **No relative imports:** Use `@/...` imports everywhere (including `src/types/**`). Do not use `./` or `../` imports across modules.
+- **Types import rule:** In `src/types/**`, import other types using `@/types/...` (or via `@/types` barrel when appropriate). Never deep-link with relative paths like `./clients/...`.
 - Provider-specific code must never be imported outside its provider folder
 
 ---

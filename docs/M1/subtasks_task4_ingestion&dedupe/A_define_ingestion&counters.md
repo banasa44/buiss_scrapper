@@ -23,8 +23,8 @@ This task defines rules only. Implementation comes after.
 
 ### 1) Offer identity (dedupe key)
 
-- Offers are deduped by `provider_offer_id` **only**.
-- `provider` is NOT part of the offer identity key.
+- Offers are deduped by `(provider, provider_offer_id)` composite key.
+- Enforced by DB UNIQUE constraint `uq_offer_provider_id`.
 
 ### 2) Upsert semantics (null handling)
 
@@ -51,11 +51,9 @@ No placeholder/anonymous companies. No fuzzy matching.
 
 ### 5) Raw data retention
 
-- `offers.raw_json` stores **raw detail payload** when available (preferred).
-- Overwrite policy for `offers.raw_json`: **fill-only**
-  - If DB `raw_json` is already set, do not overwrite.
-  - If DB `raw_json` is NULL, store the incoming raw detail JSON.
+- **M1 policy:** `offers.raw_json` is always `null` (no raw retention for simplicity).
 - No raw retention in `company_sources` (skip storing raw company source JSON).
+- Future milestones may revisit raw retention if debugging/auditing needs arise.
 
 ### 6) Runs
 

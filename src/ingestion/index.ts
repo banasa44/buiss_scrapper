@@ -10,3 +10,5 @@ export {
 } from "./runLifecycle";
 
 export { persistCompanyAndSource } from "./companyPersistence";
+
+export { persistOffer } from "./offerPersistence";
