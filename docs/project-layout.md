@@ -1,126 +1,186 @@
-# Project Layout Decision (MVP) — Single Package Modular
+# Project Layout & Architectural Rules (MVP)
 
-## Decision
+This document defines **non-negotiable architectural rules** for the MVP.  
+It is intentionally short and normative.  
+Any implementation task must comply with this document.
 
-We will use a **single-package Node.js + TypeScript** repository (one `package.json`) with a **modular `src/` layout**.
-No monorepo tooling for MVP.
+---
 
-## Why
+## Repository Shape
 
-- One executable pipeline (InfoJobs → DB → scoring → Sheets) is easiest to maintain as a single package.
-- Clear separation of concerns is achieved via directories, without monorepo overhead.
-- If the project ever grows into multiple executables, we can later split into a monorepo with minimal refactor.
+- **Single-package Node.js + TypeScript project**
+- One `package.json`
+- One executable pipeline
+- No monorepo tooling
 
-## Entrypoint Convention
+---
+
+## Entrypoint & Barrels
 
 - **Entrypoint:** `src/main.ts`
-- **Rule:** `index.ts` files are **barrel exports only** (`export * from ...`), never executable entrypoints.
+- `index.ts` files are **barrel exports only**
+  - `export * from "./x"`
+  - Never executable
+  - Never contain logic
 
-## Import/Export Conventions
+---
 
-- **Path alias:** `@/` points to `src/` (clean imports).
-  - **Configured in `tsconfig.json`** via `baseUrl`/`paths`.
-  - **Runtime (dev/prod for MVP):** execute with `ts-node` + `tsconfig-paths/register` so Node resolves `@/...` imports.
-- **Barrel exports:** each directory can expose a public surface via `index.ts` (no deep imports unless needed).
+## Imports
 
-## Types and Constants
+- Use path alias `@/` → `src/`
+- No relative import chains (`../../..`)
+- Provider-specific code must never be imported outside its provider folder
 
-- **Types** live under `src/types/` and are aggregated via `src/types/index.ts` (barrel exports only).  They must be declared as `type` not as `interface`.
-  Rule: logic files should not start with large type blocks; prefer importing types from `@/types`.
+---
 
-- **Constants** (tables/mappings/tunable values we may want to adjust later) live under `src/constants/` and are aggregated via `src/constants/index.ts` (barrel exports only).  
-  Rule: avoid large constant tables and “magic mapping” objects inside logic files; import them from `@/constants` instead.
+## Types vs Interfaces (Strict Separation)
 
-- Small inline literals are fine, but anything that is a named mapping/config table should be placed in `src/constants/` for discoverability and consistency.
+### Types
 
-## Minimal Folder Layout (no empty folders unless used)
+- Live under `src/types/`
+- **No logic-file types:** Do not declare `type`/`interface` in logic files (anything outside `src/types/`).  
+  If a function needs a result/input type, it must live under `src/types/` and be imported from there.
+- Represent **data shapes** (inputs / outputs / persisted models)
+- Declared using `type`, not `interface`
+- Canonical domain types live here
+- Aggregated via `src/types/index.ts` (barrel exports only)
 
-```
-src/
-  main.ts          # entrypoint (runner)
-  types/           # shared types/contracts
-  constants/       # tunable constants
-  config/          # runtime config loader
-  clients/         # external data sources (InfoJobs, etc.)
-    infojobs/
-      index.ts
-  db/              # SQLite + migrations + repos
-    index.ts
-  core/            # matching + scoring + aggregation logic
-    index.ts
-  exporters/       # Google Sheets exporter
-    sheets/
-      index.ts
-```
+### Interfaces
 
-## Data flow (conceptual)
+- Live under `src/interfaces/`
+- Represent **behavioral contracts**
+- Used to define what a class/service must implement
+- Never used as data containers
 
-Config + Catalog
-|
-v
-Runner -> InfoJobs Connector -> DB (offers/companies)
-| |
-v v
-Matcher/Scorer -> DB (matches)
-|
-v
-Aggregator -> DB (company aggregates)
-|
-v
-Sheets Exporter -> Google Sheets (view)
+**Types ≠ Interfaces. They are not interchangeable.**
 
-## Clients / Connectors Convention
+---
 
-External data sources are implemented under `src/clients/`.
+## Canonical Domain Model (Client-Agnostic)
 
-Each client is responsible **only** for:
-- Authentication
-- HTTP calls
-- Pagination / rate-limit awareness
-- Mapping raw payloads into normalized types
+- The canonical ingestion model lives under:
+  - `src/types/clients/job_offers.ts`
+- All external providers **must map their payloads to this model**
+- No provider-specific fields are allowed in canonical types
 
-**Clients do not:**
-- Write to DB
-- Contain business logic
+**Rule:**  
+Ingestion, DB, and business logic only work with canonical types — never with provider payloads.
 
-## Data Handling Rules (External APIs)
+---
 
-**No-throw policy for external data:**
+## Providers / Clients
 
-For data coming from external APIs (e.g. InfoJobs payloads), the system must **never throw** due to a single malformed or incomplete record.
+- External data sources live under `src/clients/<provider>/`
+- A client is responsible only for:
+  - Authentication
+  - HTTP calls
+  - Pagination / rate limits
+  - Mapping raw payloads → canonical types
 
-**Behavior:** log + skip item + continue.
+**Clients must NOT:**
 
-`throw` is reserved **only** for:
-- Missing/invalid configuration
+- Write to the database
+- Perform business logic
+- Depend on other providers
+
+Provider-specific types must remain inside:
+
+- `src/types/clients/<provider>.ts`
+- They must not be re-exported from the global `types` barrel
+
+---
+
+## Ingestion Layer
+
+- Lives under `src/ingestion/`
+- Responsible for:
+  - Orchestration
+  - Run lifecycle
+  - Calling repos
+- Works only with:
+  - Canonical types
+  - DB repositories
+
+---
+
+## Database Layer
+
+- Lives under `src/db/`
+- Repositories under `src/db/repos/`
+- Repos are **thin**
+  - No business logic
+  - No provider awareness
+- DB schema and migrations are the system of record
+
+---
+
+## Utilities
+
+- Stateless helpers live under `src/utils/`
+- Examples:
+  - Normalization
+  - Identity derivation
+  - Deterministic transforms
+
+---
+
+## Constants
+
+- Tunable or shared constants live under `src/constants/`
+- Aggregated via `src/constants/index.ts`
+- No magic numbers inside logic files
+
+---
+
+## Logging (Mandatory)
+
+- Use the project logger from `src/logger/`
+- Allowed levels:
+  - `debug`, `info`, `warn`, `error`
+- **Never use `console.log` or `console.*` directly**
+
+---
+
+## Error Handling Policy (External Data)
+
+External data is unreliable.
+
+**Per-record issues:**
+
+- Log
+- Skip
+- Continue
+
+**Throw ONLY for:**
+
+- Missing / invalid configuration
 - Authentication failures
 - Fatal initialization errors
+- DB connection failures
 
-## Config & Tunables
-
-Any tunable operational value (timeouts, retry counts, page caps, backoff delays, thresholds) must live in:
-- `src/config/` or
-- `src/constants/`
-
-Avoid hardcoded "magic numbers" inside logic.
+---
 
 ## No Placeholders / No Dead Code
 
-Do not create empty folders, stubs, or placeholder implementations "for later".
+- No empty folders
+- No stubs “for later”
+- No commented-out blocks
 
-**Implement code only when it is actually used.**
+If intent must be recorded:
 
-If intent must be recorded, use a `TODO:` comment instead of a stub file.
+- Use a `TODO:` comment
+- Do not create unused code
 
-## Logs
+---
 
-We use a **micro-logger wrapper** (no external logging library for MVP). The wrapper standardizes log levels, allows basic filtering, and makes debugging easier without framework overhead.
+## Summary Rule
 
-- Implement a small logger module that wraps `console.*` and exposes:
-  - `debug`, `info`, `warn`, `error`
-- Support `LOG_LEVEL` (e.g. `debug | info | warn | error`) to filter output.
+If a change:
 
-## Notes
+- breaks client isolation
+- blurs canonical vs provider models
+- mixes DB logic with ingestion
+- bypasses the logger
+- introduces speculative structure
 
-- DB is the system of record; Sheets is an export/view.
-- Prefer small modules with clear responsibility boundaries over premature framework decisions.
+**It is incorrect for this project.**

@@ -5,7 +5,7 @@
  */
 
 import type { Offer, OfferInput } from "@/types";
-import { getDb } from "../connection";
+import { getDb } from "@/db";
 
 /**
  * Upsert an offer based on UNIQUE(provider, provider_offer_id)

@@ -8,3 +8,5 @@ export {
   withRun,
   createRunAccumulator,
 } from "./runLifecycle";
+
+export { persistCompanyAndSource } from "./companyPersistence";

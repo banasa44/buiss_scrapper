@@ -9,7 +9,7 @@ import type {
   IngestionRunInput,
   IngestionRunUpdate,
 } from "@/types";
-import { getDb } from "../connection";
+import { getDb } from "@/db";
 
 /**
  * Create a new ingestion run

@@ -11,7 +11,7 @@ import type {
   CompanySource,
   CompanySourceInput,
 } from "@/types";
-import { getDb } from "../connection";
+import { getDb } from "@/db";
 
 /**
  * Upsert a global company based on identity evidence
