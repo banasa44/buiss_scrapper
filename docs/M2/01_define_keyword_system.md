@@ -48,6 +48,31 @@ A keyword is valid if it maps to **at least one** of:
 
 ---
 
+## Keyword Matching Rules
+
+### Word Boundaries
+
+- All keyword matches must respect **token boundaries**
+- Substring matches are **not allowed** (e.g., `aws` does not match `awesome`)
+- Tokenization is deterministic and splits on:
+  - Whitespace
+  - Punctuation
+  - Technical separators (`/`, `\`, `-`, `_`, `.`, `:`, `@`)
+
+### Synonyms and Aliases
+
+- Synonyms are treated as **aliases** of the same keyword
+- All aliases activate the same keyword ID and category
+- Aliases do **not** add additional score (no stacking)
+
+### Repetition Handling
+
+- Repeated keywords within the same category do **not** stack
+- Maximum of **one hit per category per job offer**
+- Category hit limits apply across all text fields (aggregated per offer)
+
+---
+
 ## Keyword Categories
 
 ### Level 1 — Strong USD Signal
@@ -85,7 +110,19 @@ Examples:
 
 ## Phrase-Based Boosts
 
-Certain **explicit phrases** provide a **strong boost**, but never guarantee a lead alone:
+Certain **explicit phrases** provide a **strong boost**, but never guarantee a lead alone.
+
+### Phrase Matching Rules
+
+- Phrase matches require **exact consecutive token matches** after normalization
+- No gaps or reordering allowed
+- Multi-word phrases are treated as atomic units
+
+### Relationship with Keywords
+
+- Category matches and phrase-based boosts **can both apply**
+- Phrase boosts **increase the score** but **never guarantee maximum score**
+- Phrases are independent signals that complement keyword-based category detection
 
 Examples:
 

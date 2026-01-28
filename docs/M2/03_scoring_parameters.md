@@ -32,9 +32,18 @@ Score is primarily driven by **unique categories matched** (not raw keyword coun
   - Tier 2: “USD likely” (CRM, Data/Analytics, Dev/Product tooling)
   - Tier 1: “International context only” (Design, Collaboration, Ecommerce)
 
+### Field Weighting
+
+Matches in different fields affect scoring with different weights:
+
+- **Job title** > **Job description** > **Company name**
+- Field weighting directly influences the score calculation
+- Rationale: job titles contain more concentrated signals
+
 Rule:
 
-- **Only one hit per category counts** (avoid spam from repeated terms).
+- **Only one hit per category counts** (avoid spam from repeated terms)
+- Category hits are aggregated **per job offer** (not per field)
 
 ### Keyword-level contributions (secondary)
 
@@ -50,24 +59,54 @@ Certain keywords are treated as “special” within a category:
 
 Default rule (M2-safe, simple):
 
-- Repeated keywords inside the same category do **not** stack.
-- Optional “diminishing returns” can be added later if we see under-scoring in real data.
+- Repeated keywords inside the same category do **not** stack
+- Maximum of **one hit per category per job offer**
+- Category limits apply across all text fields (aggregated per offer)
+- Optional "diminishing returns" can be added later if we see under-scoring in real data
 
 > For M1/M2 start: keep it strict to avoid noise inflation.
 
 ---
 
+## Negation Penalties
+
+When a keyword appears in a negated context:
+
+- The hit does **not** count as a positive match
+- A **small negative adjustment** is applied to the score
+- The penalty reduces the score but does not zero it out or exclude the company
+- Negation scope: 6–10 tokens around the keyword
+
+> Rationale: avoids false positives from "no experience with AWS required" while preserving other signals.
+
+---
+
 ## Phrase Boosts
 
-Phrase-level signals (e.g. “USD”, “multidivisa”, “pagos internacionales”) add a **strong bonus**:
+Phrase-level signals (e.g. "USD", "multidivisa", "pagos internacionales") add a **strong bonus**.
 
-- They **increase the score**, but do not automatically max it.
+### Phrase Semantics
+
+- Phrase matches require **exact consecutive token matches** after normalization
+- No gaps or reordering allowed
+
+### Relationship with Categories
+
+- Category matches and phrase boosts **can both apply** to the same offer
+- Phrase boosts **increase the score** but do **not automatically max it out**
+- Phrases are independent signals that complement category-based scoring
 
 > This prevents single-phrase false positives from dominating.
 
 ---
 
 ## Output Semantics
+
+### Matching Scope
+
+- All scoring is computed **per job offer**
+- Multiple fields within one offer do not generate duplicate category hits
+- Field information is preserved for weighting, not for separate scoring
 
 ### Interpretation
 
