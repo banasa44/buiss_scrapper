@@ -22,27 +22,88 @@ Goal: persist offers/companies and guarantee idempotent reruns before scoring.
   TODO:
   **Note:** M1.4-E (optional raw_json flag) has been **deferred** to a future milestone. M1 uses `raw_json = null` throughout.
 
-## M2 — Catalog + matcher/scorer (signal v0 with tests)
+## M2 — Signal definition (DEFINE only)
 
-Goal: produce explainable offer-level signals with a configurable catalog.
+Goal: define all semantic rules for keyword matching and scoring before implementation.
 
-- [DEFINE] Define keyword catalog format and ownership
-- [DEFINE] Define scoring parameters
-- [DEFINE] Define text normalization rules
-- [BUILD] Implement catalog loader + validation
-- [BUILD] Implement matcher/scorer
-- [UTEST] Add matcher tests
+### M2.1 — Keyword catalog (DEFINE)
 
-## M3 — Company aggregation + freshness + repost policy
+- [DEFINE] Define keyword catalog format (categories, tiers, phrases)
+- [DEFINE] Define catalog ownership & editability rules (client vs system)
+
+### M2.2 — Text normalization (DEFINE)
+
+- [DEFINE] Define text fields used for matching (title, description, company)
+- [DEFINE] Define normalization rules (lowercase, accent removal, stopwords, tokenization)
+- [DEFINE] Define language handling (ES/EN)
+- [DEFINE] Explicit non-goals (no heavy NLP, no embeddings, no ML)
+
+### M2.3 — Matching rules (DEFINE)
+
+- [DEFINE] Define keyword match types (exact, regex, phrase)
+- [DEFINE] Define word boundary requirements
+- [DEFINE] Define negation handling (basic scope-based)
+- [DEFINE] Define multi-category behavior (1 hit per category per offer)
+- [DEFINE] Define synonym/alias semantics
+
+### M2.4 — Scoring model (DEFINE)
+
+- [DEFINE] Define tier-based scoring model (category weights)
+- [DEFINE] Define phrase boost behavior
+- [DEFINE] Define score scale (0–10) and classification labels (A/B)
+- [DEFINE] Define field weighting (title > description > company name)
+- [DEFINE] Define explainability contract (what data is exposed)
+
+**Outcome of M2:** Scoring should be manually simulatable on paper.
+
+---
+
+## M3 — Signal implementation (offer-level)
+
+Goal: implement the matching and scoring logic defined in M2, producing explainable offer-level signals.
+
+### M3.1 — Catalog runtime
+
+- [BUILD] Implement catalog loader + schema validation
+- [DEFINE] Define safe defaults and failure modes
+
+### M3.2 — Matcher
+
+- [BUILD] Implement Text → MatchResult
+- [UTEST] Add unit tests for keyword, phrase, negation, and boundary cases
+
+### M3.3 — Scorer
+
+- [BUILD] Implement MatchResult → ScoreResult
+- [UTEST] Add unit tests for tiers, boosts, caps
+
+**Outcome of M3:** `offer → score(0–10) + label + topCategory`
+
+---
+
+## M4 — Company aggregation & relevance
 
 Goal: turn offer signals into a ranked company view that stays relevant.
 
-- [DEFINE] Specify offer freshness policy
-- [DEFINE] Define repost detection policy
-- [BUILD] Implement company aggregation
-- [UTEST] Add aggregation/scoring behavior tests
+### M4.1 — Aggregation rules (DEFINE)
 
-## M4 — Sheets export + live gated integration
+- [DEFINE] Define aggregation strategy (max score vs max+count)
+- [DEFINE] Specify offer freshness window
+- [DEFINE] Define repost detection policy (same offer vs new)
+
+### M4.2 — Aggregation build (BUILD)
+
+- [BUILD] Implement company score computation
+- [UTEST] Add unit tests for aggregation edge cases
+
+### M4.3 — Output shaping
+
+- [DEFINE] Define export fields (score, label, company, optional reasons)
+- [BUILD] Build export to CSV format
+
+---
+
+## M5 — Sheets export + live gated integration
 
 Goal: export ranked companies to Sheets and validate end-to-end integrations.
 
@@ -51,7 +112,9 @@ Goal: export ranked companies to Sheets and validate end-to-end integrations.
 - [BUILD] Implement Sheets exporter
 - [ITEST] Add gated integration tests
 
-## M5 — Operationalization (state + scheduling) + runbook
+---
+
+## M6 — Operationalization (state + scheduling) + runbook
 
 Goal: make it hands-off to run daily with stable behavior.
 
@@ -61,7 +124,9 @@ Goal: make it hands-off to run daily with stable behavior.
 - [BUILD] Implement run summary logging
 - [DOC] Document configuration and runbook
 
-## M6 — Convenience layer (only if you still want it)
+---
+
+## M7 — Convenience layer (only if you still want it)
 
 Goal: improve developer ergonomics once the pipeline is working.
 
