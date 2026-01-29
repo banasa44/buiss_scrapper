@@ -31,7 +31,8 @@ coverage/
 *.temp
 
 # Database
-data/
+data/*
+!data/catalog.json
 *.db
 *.db-shm
 *.db-wal

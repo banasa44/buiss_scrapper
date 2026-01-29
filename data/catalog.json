@@ -1,0 +1,154 @@
+{
+  "version": "1.0.0",
+  "categories": [
+    {
+      "id": "cat_cloud_infra",
+      "name": "Cloud Infrastructure",
+      "tier": 3
+    },
+    {
+      "id": "cat_ads_platforms",
+      "name": "Advertising Platforms",
+      "tier": 3
+    },
+    {
+      "id": "cat_payments",
+      "name": "Global Payments",
+      "tier": 3
+    },
+    {
+      "id": "cat_crm",
+      "name": "CRM & Marketing Automation",
+      "tier": 2
+    },
+    {
+      "id": "cat_analytics",
+      "name": "Data & Analytics",
+      "tier": 2
+    },
+    {
+      "id": "cat_collaboration",
+      "name": "Collaboration Tools",
+      "tier": 1
+    }
+  ],
+  "keywords": [
+    {
+      "id": "kw_aws",
+      "categoryId": "cat_cloud_infra",
+      "canonical": "AWS",
+      "aliases": ["aws", "amazon web services", "ec2", "s3", "lambda"]
+    },
+    {
+      "id": "kw_gcp",
+      "categoryId": "cat_cloud_infra",
+      "canonical": "GCP",
+      "aliases": ["gcp", "google cloud", "google cloud platform"]
+    },
+    {
+      "id": "kw_azure",
+      "categoryId": "cat_cloud_infra",
+      "canonical": "Azure",
+      "aliases": ["azure", "microsoft azure"]
+    },
+    {
+      "id": "kw_google_ads",
+      "categoryId": "cat_ads_platforms",
+      "canonical": "Google Ads",
+      "aliases": ["google ads", "adwords", "google adwords"]
+    },
+    {
+      "id": "kw_meta_ads",
+      "categoryId": "cat_ads_platforms",
+      "canonical": "Meta Ads",
+      "aliases": ["meta ads", "facebook ads", "instagram ads"]
+    },
+    {
+      "id": "kw_tiktok_ads",
+      "categoryId": "cat_ads_platforms",
+      "canonical": "TikTok Ads",
+      "aliases": ["tiktok ads", "tiktok for business"]
+    },
+    {
+      "id": "kw_stripe",
+      "categoryId": "cat_payments",
+      "canonical": "Stripe",
+      "aliases": ["stripe", "stripe payments"]
+    },
+    {
+      "id": "kw_adyen",
+      "categoryId": "cat_payments",
+      "canonical": "Adyen",
+      "aliases": ["adyen"]
+    },
+    {
+      "id": "kw_paypal",
+      "categoryId": "cat_payments",
+      "canonical": "PayPal",
+      "aliases": ["paypal", "braintree"]
+    },
+    {
+      "id": "kw_salesforce",
+      "categoryId": "cat_crm",
+      "canonical": "Salesforce",
+      "aliases": ["salesforce", "sfdc"]
+    },
+    {
+      "id": "kw_hubspot",
+      "categoryId": "cat_crm",
+      "canonical": "HubSpot",
+      "aliases": ["hubspot"]
+    },
+    {
+      "id": "kw_tableau",
+      "categoryId": "cat_analytics",
+      "canonical": "Tableau",
+      "aliases": ["tableau"]
+    },
+    {
+      "id": "kw_powerbi",
+      "categoryId": "cat_analytics",
+      "canonical": "Power BI",
+      "aliases": ["power bi", "powerbi"]
+    },
+    {
+      "id": "kw_slack",
+      "categoryId": "cat_collaboration",
+      "canonical": "Slack",
+      "aliases": ["slack"]
+    },
+    {
+      "id": "kw_jira",
+      "categoryId": "cat_collaboration",
+      "canonical": "Jira",
+      "aliases": ["jira", "atlassian jira"]
+    }
+  ],
+  "phrases": [
+    {
+      "id": "phrase_usd",
+      "phrase": "USD",
+      "tier": 3
+    },
+    {
+      "id": "phrase_multicurrency",
+      "phrase": "multidivisa",
+      "tier": 3
+    },
+    {
+      "id": "phrase_international_payments",
+      "phrase": "pagos internacionales",
+      "tier": 3
+    },
+    {
+      "id": "phrase_global_expansion",
+      "phrase": "expansión internacional",
+      "tier": 2
+    },
+    {
+      "id": "phrase_forex",
+      "phrase": "foreign exchange",
+      "tier": 3
+    }
+  ]
+}
