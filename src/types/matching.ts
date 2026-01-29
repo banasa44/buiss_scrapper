@@ -33,6 +33,8 @@ export type MatchHit = {
   tokenIndex: number;
   /** Matched token sequence (normalized form) */
   matchedTokens: string[];
+  /** Whether this hit appears in a negated context */
+  isNegated: boolean;
 };
 
 /**
@@ -50,6 +52,8 @@ export type PhraseMatchHit = {
   tokenIndex: number;
   /** Matched token sequence (normalized form) */
   matchedTokens: string[];
+  /** Whether this hit appears in a negated context */
+  isNegated: boolean;
 };
 
 /**

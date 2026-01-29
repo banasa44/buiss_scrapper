@@ -53,6 +53,10 @@ export type ScoreReason = {
   uniqueCategories: number;
   /** Total unique keywords matched */
   uniqueKeywords: number;
+  /** Number of keyword hits excluded due to negation */
+  negatedKeywordHits: number;
+  /** Number of phrase hits excluded due to negation */
+  negatedPhraseHits: number;
 };
 
 /**

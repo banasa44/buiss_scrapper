@@ -4,7 +4,8 @@
  * Converts keyword/phrase matches into a numeric score (0-10) with
  * auditable explanations.
  *
- * Scoring rules (M3.3a):
+ * Scoring rules (M3.3b):
+ * - Negated hits (isNegated=true) are excluded before scoring (contribute 0 points)
  * - Max 1 hit per category per offer (no stacking within category)
  * - Category contribution = tier weight × field weight
  * - Phrase boosts are independent and non-stacking
@@ -40,12 +41,12 @@ import {
  * Multiple keywords from the same category do NOT stack.
  * Multiple hits of the same keyword do NOT stack.
  *
- * @param matchResult - Keyword and phrase match results
+ * @param keywordHits - Active (non-negated) keyword hits
  * @param catalog - Runtime catalog with category metadata
  * @returns Array of category contributions
  */
 function aggregateCategoryContributions(
-  matchResult: MatchResult,
+  keywordHits: MatchResult["keywordHits"],
   catalog: CatalogRuntime,
 ): CategoryContribution[] {
   // Group hits by category
@@ -54,7 +55,7 @@ function aggregateCategoryContributions(
     { hitCount: number; maxPoints: number }
   >();
 
-  for (const hit of matchResult.keywordHits) {
+  for (const hit of keywordHits) {
     const category = catalog.categories.get(hit.categoryId);
     if (!category) {
       // Skip invalid category references (shouldn't happen with valid catalog)
@@ -95,21 +96,21 @@ function aggregateCategoryContributions(
  * Each unique phrase contributes once, regardless of how many times
  * it appears in the offer.
  *
- * @param matchResult - Keyword and phrase match results
+ * @param phraseHits - Active (non-negated) phrase hits
  * @returns Array of phrase contributions
  */
 function aggregatePhraseContributions(
-  matchResult: MatchResult,
+  phraseHits: MatchResult["phraseHits"],
 ): PhraseContribution[] {
-  const phraseHits = new Map<string, number>();
+  const phraseHitsMap = new Map<string, number>();
 
-  for (const hit of matchResult.phraseHits) {
-    const count = phraseHits.get(hit.phraseId) ?? 0;
-    phraseHits.set(hit.phraseId, count + 1);
+  for (const hit of phraseHits) {
+    const count = phraseHitsMap.get(hit.phraseId) ?? 0;
+    phraseHitsMap.set(hit.phraseId, count + 1);
   }
 
   const contributions: PhraseContribution[] = [];
-  for (const [phraseId, hitCount] of phraseHits) {
+  for (const [phraseId, hitCount] of phraseHitsMap) {
     contributions.push({
       phraseId,
       hitCount,
@@ -124,16 +125,21 @@ function aggregatePhraseContributions(
  * Computes offer-level score from match results.
  *
  * Scoring algorithm:
- * 1. Aggregate category hits (max 1 per category)
- * 2. Sum category contributions (tier × field weight)
- * 3. Add phrase boosts (1 per unique phrase)
- * 4. Clamp to [0, MAX_SCORE]
- * 5. Round to integer
+ * 1. Filter out negated hits (isNegated=true)
+ * 2. Aggregate category hits (max 1 per category)
+ * 3. Sum category contributions (tier × field weight)
+ * 4. Add phrase boosts (1 per unique phrase)
+ * 5. Clamp to [0, MAX_SCORE]
+ * 6. Round to integer
+ *
+ * Negation gating:
+ * - Hits with isNegated=true are excluded before scoring
+ * - They contribute 0 points (not subtracted, just ignored)
  *
  * Returns ScoreResult with:
  * - Final score (0-10)
  * - Top contributing category
- * - Detailed reasons for auditability
+ * - Detailed reasons including negation counts
  *
  * @param matchResult - Match results from matcher
  * @param catalog - Runtime catalog with metadata
@@ -143,14 +149,24 @@ export function scoreOffer(
   matchResult: MatchResult,
   catalog: CatalogRuntime,
 ): ScoreResult {
+  // Filter out negated hits (negation gating)
+  const activeKeywordHits = matchResult.keywordHits.filter((h) => !h.isNegated);
+  const activePhraseHits = matchResult.phraseHits.filter((h) => !h.isNegated);
+
+  // Count negated hits for audit trail
+  const negatedKeywordHits =
+    matchResult.keywordHits.length - activeKeywordHits.length;
+  const negatedPhraseHits =
+    matchResult.phraseHits.length - activePhraseHits.length;
+
   // Aggregate category contributions (enforces max 1 per category)
   const categoryContributions = aggregateCategoryContributions(
-    matchResult,
+    activeKeywordHits,
     catalog,
   );
 
   // Aggregate phrase contributions (enforces max 1 per phrase)
-  const phraseContributions = aggregatePhraseContributions(matchResult);
+  const phraseContributions = aggregatePhraseContributions(activePhraseHits);
 
   // Compute raw score
   const categoryPoints = categoryContributions.reduce(
@@ -179,6 +195,8 @@ export function scoreOffer(
       phrases: phraseContributions,
       uniqueCategories: matchResult.uniqueCategories,
       uniqueKeywords: matchResult.uniqueKeywords,
+      negatedKeywordHits,
+      negatedPhraseHits,
     },
   };
 }

@@ -3,15 +3,12 @@
  *
  * Matches job offers against the compiled catalog to detect USD/FX signals.
  *
- * Current scope (M3.2c):
+ * Current scope (M3.3b):
  * - Single-token and multi-token keyword aliases
  * - Consecutive token sequence matching for multi-token aliases
  * - Phrase boost matching (separate from keyword hits)
- * - No negation handling
+ * - Negation annotation (inline at match time)
  * - Token boundary matching via tokenization
- *
- * Future scope:
- * - Negation window handling
  */
 
 import type { CatalogRuntime } from "@/types/catalog";
@@ -23,6 +20,7 @@ import type {
   PhraseMatchHit,
 } from "@/types/matching";
 import { normalizeToTokens } from "@/utils/textNormalization";
+import { isNegated } from "./negation";
 
 /**
  * Matches a single text field against the catalog keywords.
@@ -72,6 +70,7 @@ function matchField(
           field,
           tokenIndex,
           matchedTokens: [token],
+          isNegated: isNegated(tokens, tokenIndex, 1),
         });
         continue;
       }
@@ -97,6 +96,7 @@ function matchField(
           field,
           tokenIndex,
           matchedTokens: aliasTokens.slice(), // Copy the matched sequence
+          isNegated: isNegated(tokens, tokenIndex, aliasLength),
         });
       }
     }
@@ -144,6 +144,7 @@ function matchPhrases(
           field,
           tokenIndex,
           matchedTokens: [token],
+          isNegated: isNegated(tokens, tokenIndex, 1),
         });
         continue;
       }
@@ -168,6 +169,7 @@ function matchPhrases(
           field,
           tokenIndex,
           matchedTokens: phraseTokens.slice(), // Copy the matched sequence
+          isNegated: isNegated(tokens, tokenIndex, phraseLength),
         });
       }
     }
