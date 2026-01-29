@@ -1,0 +1,11 @@
+{
+  "id": "fx03_url_only_stripe",
+  "title": "Support Specialist",
+  "description": "Apply here: https://stripe.com/jobs/apply?id=12345 . General customer support role. No payments platform experience needed.",
+  "profile": {
+    "name": "SupportCo SL",
+    "description": "Customer support outsourcing."
+  },
+  "city": "Valencia",
+  "country": { "id": 17, "value": "España" }
+}

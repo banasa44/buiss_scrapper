@@ -1,0 +1,11 @@
+{
+  "id": "fx01_strong_usd_signal",
+  "title": "Performance Marketing Manager (Google Ads, Meta) - Remote",
+  "description": "We manage large Google Ads and Meta Ads budgets. Experience with AWS (EC2, S3) and payments via Stripe. We invoice in USD and work with international customers.",
+  "profile": {
+    "name": "Acme Growth SL",
+    "description": "B2B SaaS with international clients."
+  },
+  "city": "Barcelona",
+  "country": { "id": 17, "value": "España" }
+}

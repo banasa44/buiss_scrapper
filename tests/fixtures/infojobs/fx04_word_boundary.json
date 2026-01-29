@@ -1,0 +1,11 @@
+{
+  "id": "fx04_word_boundary",
+  "title": "Awsome Frontend Engineer",
+  "description": "We are an awsome team building web apps. No cloud provider mentioned. Great culture and teamwork.",
+  "profile": {
+    "name": "Awsome Studio SL",
+    "description": "Digital studio."
+  },
+  "city": "Sevilla",
+  "country": { "id": 17, "value": "España" }
+}

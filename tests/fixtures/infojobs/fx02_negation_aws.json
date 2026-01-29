@@ -1,0 +1,11 @@
+{
+  "id": "fx02_negation_aws",
+  "title": "Backend Developer - Node.js",
+  "description": "No experience with AWS required. You will work mostly on on-prem systems. Familiarity with Azure is a plus.",
+  "profile": {
+    "name": "OnPrem Systems SL",
+    "description": "Local IT services."
+  },
+  "city": "Madrid",
+  "country": { "id": 17, "value": "España" }
+}

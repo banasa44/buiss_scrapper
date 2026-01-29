@@ -1,0 +1,11 @@
+{
+  "id": "fx05_phrase_boost_fx",
+  "title": "Finance Operations Specialist",
+  "description": "Gestion de pagos internacionales y facturacion multidivisa. Coordination with external providers and reporting in foreign exchange contexts.",
+  "profile": {
+    "name": "Export Traders SL",
+    "description": "International commerce and operations."
+  },
+  "city": "Bilbao",
+  "country": { "id": 17, "value": "España" }
+}
