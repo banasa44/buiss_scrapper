@@ -3,3 +3,5 @@
  */
 
 export * from "./companyIdentity";
+export * from "./textNormalization";
+export * from "./catalogValidation";
