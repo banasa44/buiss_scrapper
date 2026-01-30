@@ -2,12 +2,17 @@
  * Database type definitions
  *
  * Types for database entities and repository interfaces.
- * Aligned with schema in migrations/0002_company_sources_and_global_companies.sql
+ * Aligned with schema in migrations/0003_company_aggregation_signals.sql
  */
 
 /**
  * Company entity (global, no provider column)
  * Stored in companies table
+ *
+ * Includes M4 aggregation signals (nullable until first aggregation run):
+ * - Core metrics: max_score, offer_count, unique_offer_count, strong_offer_count, avg_strong_score
+ * - Evidence: top_category_id, top_offer_id, category_max_scores (JSON)
+ * - Freshness: last_strong_at
  */
 export type Company = {
   id: number;
@@ -18,6 +23,16 @@ export type Company = {
   website_domain: string | null;
   created_at: string;
   updated_at: string;
+  // M4 aggregation signals (nullable)
+  max_score: number | null;
+  offer_count: number | null;
+  unique_offer_count: number | null;
+  strong_offer_count: number | null;
+  avg_strong_score: number | null;
+  top_category_id: string | null;
+  top_offer_id: number | null;
+  category_max_scores: string | null; // JSON: { [categoryId]: maxScore }
+  last_strong_at: string | null;
 };
 
 /**
@@ -30,6 +45,25 @@ export type CompanyInput = {
   normalized_name?: string | null;
   website_url?: string | null;
   website_domain?: string | null;
+};
+
+/**
+ * Company aggregation signals update input
+ * Used by M4 aggregation logic to update company-level scores
+ *
+ * All fields are optional to support partial updates.
+ * In practice, aggregation will set all fields atomically.
+ */
+export type CompanyAggregationInput = {
+  max_score?: number | null;
+  offer_count?: number | null;
+  unique_offer_count?: number | null;
+  strong_offer_count?: number | null;
+  avg_strong_score?: number | null;
+  top_category_id?: string | null;
+  top_offer_id?: number | null;
+  category_max_scores?: string | null; // JSON: { [categoryId]: maxScore }
+  last_strong_at?: string | null;
 };
 
 /**
