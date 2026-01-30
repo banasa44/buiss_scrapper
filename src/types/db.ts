@@ -99,6 +99,12 @@ export type CompanySourceInput = {
 
 /**
  * Job offer entity (stored in offers table)
+ *
+ * Includes M4 canonicalization fields for repost/duplicate handling:
+ * - canonical_offer_id: NULL for canonical offers, points to canonical for duplicates
+ * - repost_count: tracked on canonical offers only
+ * - last_seen_at: updated when duplicates are detected
+ * - content_fingerprint: deterministic fingerprint for duplicate detection
  */
 export type Offer = {
   id: number;
@@ -119,10 +125,19 @@ export type Offer = {
   raw_json: string | null;
   ingested_at: string;
   last_updated_at: string;
+  // M4 canonicalization fields (nullable)
+  canonical_offer_id: number | null;
+  repost_count: number;
+  last_seen_at: string | null;
+  content_fingerprint: string | null;
 };
 
 /**
  * Offer upsert input (omit auto-generated fields)
+ *
+ * Note: Canonicalization fields (canonical_offer_id, content_fingerprint,
+ * last_seen_at) are intentionally excluded. These must only be mutated by
+ * dedicated M4 dedupe methods, never by generic ingestion upserts.
  */
 export type OfferInput = {
   provider: string;
@@ -140,6 +155,17 @@ export type OfferInput = {
   applications_count?: number | null;
   metadata_json?: string | null;
   raw_json?: string | null;
+};
+
+/**
+ * Offer canonicalization update input
+ * Used by M4 dedupe logic to mark offers as duplicates or update repost tracking
+ */
+export type OfferCanonicalUpdateInput = {
+  canonical_offer_id?: number | null;
+  repost_count?: number;
+  last_seen_at?: string | null;
+  content_fingerprint?: string | null;
 };
 
 /**

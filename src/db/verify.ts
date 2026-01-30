@@ -17,6 +17,10 @@ import {
   getOfferById,
   getRunById,
   updateCompanyAggregation,
+  markOfferAsDuplicate,
+  incrementOfferRepostCount,
+  findCanonicalOffersByFingerprint,
+  updateOfferCanonical,
 } from "@/db";
 import {
   startRun as lifecycleStartRun,
@@ -210,6 +214,71 @@ function testDb() {
   }
   console.log(
     `  ✓ Partial update: score=${partialUpdate.max_score}, strong_count=${partialUpdate.strong_offer_count} (preserved)`,
+  );
+
+  // Test 14: Offer canonicalization - create canonical offer with fingerprint
+  console.log("\nTest 9: Offer canonicalization");
+  const canonicalOfferId = upsertOffer({
+    provider: "infojobs",
+    provider_offer_id: "canonical-offer-1",
+    company_id: companyId1,
+    title: "Senior Backend Engineer",
+    description: "Work on cloud infrastructure",
+  });
+  // Set canonicalization fields via dedicated method
+  updateOfferCanonical(canonicalOfferId, {
+    content_fingerprint: "fp-12345",
+    last_seen_at: "2026-01-30T10:00:00Z",
+  });
+  console.log(`  ✓ Created canonical offer ID: ${canonicalOfferId}`);
+
+  // Test 15: Mark offer as duplicate
+  const duplicateOfferId = upsertOffer({
+    provider: "infojobs",
+    provider_offer_id: "duplicate-offer-1",
+    company_id: companyId1,
+    title: "Senior Backend Engineer (repost)",
+    description: "Work on cloud infrastructure (same job)",
+  });
+  markOfferAsDuplicate(duplicateOfferId, canonicalOfferId);
+  const markedOffer = getOfferById(duplicateOfferId);
+  if (markedOffer?.canonical_offer_id !== canonicalOfferId) {
+    throw new Error("Offer not properly marked as duplicate");
+  }
+  console.log(
+    `  ✓ Marked offer ${duplicateOfferId} as duplicate of ${canonicalOfferId}`,
+  );
+
+  // Test 16: Increment repost count
+  incrementOfferRepostCount(canonicalOfferId, "2026-01-30T12:00:00Z");
+  const repostedOffer = getOfferById(canonicalOfferId);
+  if (repostedOffer?.repost_count !== 1) {
+    throw new Error("Repost count not incremented");
+  }
+  console.log(
+    `  ✓ Incremented repost count: ${repostedOffer.repost_count}, last_seen: ${repostedOffer.last_seen_at}`,
+  );
+
+  // Test 17: Find offers by fingerprint
+  const foundOffers = findCanonicalOffersByFingerprint("fp-12345", companyId1);
+  if (foundOffers.length !== 1 || foundOffers[0].id !== canonicalOfferId) {
+    throw new Error("Fingerprint search failed");
+  }
+  console.log(
+    `  ✓ Found ${foundOffers.length} canonical offer(s) by fingerprint`,
+  );
+
+  // Test 18: Update canonical fields
+  updateOfferCanonical(canonicalOfferId, {
+    repost_count: 5,
+    last_seen_at: "2026-01-30T14:00:00Z",
+  });
+  const updatedOffer = getOfferById(canonicalOfferId);
+  if (updatedOffer?.repost_count !== 5) {
+    throw new Error("Canonical update failed");
+  }
+  console.log(
+    `  ✓ Updated canonical fields: repost_count=${updatedOffer.repost_count}`,
   );
 
   closeDb();
