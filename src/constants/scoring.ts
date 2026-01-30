@@ -65,3 +65,13 @@ export const MAX_SCORE = 10;
  * Offers with score <= MIN_SCORE are effectively filtered out.
  */
 export const MIN_SCORE = 0;
+
+/**
+ * Score threshold for "strong" offers.
+ *
+ * Offers with score >= STRONG_THRESHOLD are considered high-quality signals.
+ * Used in M4 aggregation to compute strongOfferCount and avgStrongScore.
+ *
+ * Per docs/M4/01_define_agg_strategy.md: initially 6.
+ */
+export const STRONG_THRESHOLD = 6;
