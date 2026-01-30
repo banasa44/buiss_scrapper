@@ -10,8 +10,10 @@ import type {
   CompanyInput,
   CompanySource,
   CompanySourceInput,
+  CompanyAggregationInput,
 } from "@/types";
 import { getDb } from "@/db";
+import { warn } from "@/logger";
 
 /**
  * Upsert a global company based on identity evidence
@@ -243,4 +245,105 @@ export function getCompanySourcesByCompanyId(
   return db
     .prepare("SELECT * FROM company_sources WHERE company_id = ?")
     .all(companyId) as CompanySource[];
+}
+
+/**
+ * Update company aggregation signals (M4)
+ *
+ * Performs a partial update: only updates fields present in input.
+ * Deterministic and safe - does not null fields that weren't provided.
+ *
+ * category_max_scores is JSON-serialized before storage.
+ * If serialization fails, logs warning and stores null.
+ *
+ * Returns the updated company record.
+ *
+ * @throws Error if company does not exist
+ */
+export function updateCompanyAggregation(
+  companyId: number,
+  input: CompanyAggregationInput,
+): Company {
+  const db = getDb();
+
+  // Verify company exists
+  const existing = getCompanyById(companyId);
+  if (!existing) {
+    throw new Error(
+      `Cannot update aggregation: company id ${companyId} does not exist`,
+    );
+  }
+
+  // Build dynamic UPDATE query for provided fields only
+  const updates: string[] = [];
+  const values: (number | string | null)[] = [];
+
+  if (input.max_score !== undefined) {
+    updates.push("max_score = ?");
+    values.push(input.max_score);
+  }
+  if (input.offer_count !== undefined) {
+    updates.push("offer_count = ?");
+    values.push(input.offer_count);
+  }
+  if (input.unique_offer_count !== undefined) {
+    updates.push("unique_offer_count = ?");
+    values.push(input.unique_offer_count);
+  }
+  if (input.strong_offer_count !== undefined) {
+    updates.push("strong_offer_count = ?");
+    values.push(input.strong_offer_count);
+  }
+  if (input.avg_strong_score !== undefined) {
+    updates.push("avg_strong_score = ?");
+    values.push(input.avg_strong_score);
+  }
+  if (input.top_category_id !== undefined) {
+    updates.push("top_category_id = ?");
+    values.push(input.top_category_id);
+  }
+  if (input.top_offer_id !== undefined) {
+    updates.push("top_offer_id = ?");
+    values.push(input.top_offer_id);
+  }
+  if (input.category_max_scores !== undefined) {
+    // Serialize object to JSON
+    let serialized: string | null = null;
+    if (input.category_max_scores !== null) {
+      try {
+        serialized = JSON.stringify(input.category_max_scores);
+      } catch (err) {
+        warn("Failed to serialize category_max_scores, storing null", {
+          companyId,
+          error: String(err),
+        });
+        serialized = null;
+      }
+    }
+    updates.push("category_max_scores = ?");
+    values.push(serialized);
+  }
+  if (input.last_strong_at !== undefined) {
+    updates.push("last_strong_at = ?");
+    values.push(input.last_strong_at);
+  }
+
+  // Always update updated_at
+  updates.push("updated_at = datetime('now')");
+
+  // Build and execute query
+  if (updates.length > 0) {
+    const sql = `UPDATE companies SET ${updates.join(", ")} WHERE id = ?`;
+    values.push(companyId);
+    db.prepare(sql).run(...values);
+  }
+
+  // Return updated company
+  const updated = getCompanyById(companyId);
+  if (!updated) {
+    throw new Error(
+      `Company disappeared during aggregation update: id ${companyId}`,
+    );
+  }
+  return updated;
 }

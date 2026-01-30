@@ -16,6 +16,7 @@ import {
   getCompanyById,
   getOfferById,
   getRunById,
+  updateCompanyAggregation,
 } from "@/db";
 import {
   startRun as lifecycleStartRun,
@@ -167,6 +168,49 @@ function testDb() {
       throw err;
     }
   }
+
+  // Test 12: Update company aggregation signals
+  console.log("\nTest 8: Update company aggregation signals");
+  const updatedCompany = updateCompanyAggregation(companyId1, {
+    max_score: 8.5,
+    offer_count: 3,
+    unique_offer_count: 2,
+    strong_offer_count: 2,
+    avg_strong_score: 7.5,
+    top_category_id: "cloud",
+    top_offer_id: offerId1,
+    category_max_scores: { cloud: 8.5, payments: 6.0 },
+    last_strong_at: "2026-01-30T12:00:00Z",
+  });
+  console.log(
+    `  ✓ Updated aggregation: score=${updatedCompany.max_score}, offers=${updatedCompany.offer_count}`,
+  );
+
+  // Verify JSON serialization
+  if (!updatedCompany.category_max_scores) {
+    throw new Error("category_max_scores should not be null");
+  }
+  const parsedScores = JSON.parse(updatedCompany.category_max_scores);
+  if (parsedScores.cloud !== 8.5) {
+    throw new Error("category_max_scores JSON not properly serialized");
+  }
+  console.log(`  ✓ JSON serialization: ${updatedCompany.category_max_scores}`);
+
+  // Test 13: Partial update (only some fields)
+  const partialUpdate = updateCompanyAggregation(companyId1, {
+    max_score: 9.0,
+    offer_count: 4,
+  });
+  if (
+    partialUpdate.max_score !== 9.0 ||
+    partialUpdate.offer_count !== 4 ||
+    partialUpdate.strong_offer_count !== 2
+  ) {
+    throw new Error("Partial update failed to preserve unmodified fields");
+  }
+  console.log(
+    `  ✓ Partial update: score=${partialUpdate.max_score}, strong_count=${partialUpdate.strong_offer_count} (preserved)`,
+  );
 
   closeDb();
 

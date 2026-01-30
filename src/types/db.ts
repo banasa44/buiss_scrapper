@@ -53,6 +53,9 @@ export type CompanyInput = {
  *
  * All fields are optional to support partial updates.
  * In practice, aggregation will set all fields atomically.
+ *
+ * Note: category_max_scores is passed as a plain object and will be
+ * JSON-serialized by the repo layer before storage.
  */
 export type CompanyAggregationInput = {
   max_score?: number | null;
@@ -62,7 +65,7 @@ export type CompanyAggregationInput = {
   avg_strong_score?: number | null;
   top_category_id?: string | null;
   top_offer_id?: number | null;
-  category_max_scores?: string | null; // JSON: { [categoryId]: maxScore }
+  category_max_scores?: Record<string, number> | null; // Plain object, serialized as JSON in DB
   last_strong_at?: string | null;
 };
 
