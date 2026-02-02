@@ -3,3 +3,5 @@
  */
 
 export * from "./aggregateCompany";
+export * from "./mapCompanyOfferRows";
+export * from "./aggregateCompanyAndPersist";
