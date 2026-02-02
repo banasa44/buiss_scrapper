@@ -7,3 +7,4 @@ export * from "./migrate";
 export * from "./repos/companiesRepo";
 export * from "./repos/offersRepo";
 export * from "./repos/runsRepo";
+export * from "./repos/matchesRepo";

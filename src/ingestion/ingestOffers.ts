@@ -8,8 +8,16 @@
  * This is NOT the final pipeline entrypoint — it's a building block.
  */
 
-import type { IngestOffersInput, IngestOffersResult } from "@/types";
+import type {
+  IngestOffersInput,
+  IngestOffersResult,
+  JobOfferDetail,
+} from "@/types";
 import { persistOffer } from "./offerPersistence";
+import { upsertMatch } from "@/db";
+import { loadCatalog } from "@/catalog";
+import { matchOffer } from "@/signal/matcher";
+import { scoreOffer } from "@/signal/scorer";
 import * as logger from "@/logger";
 
 /**
@@ -17,6 +25,8 @@ import * as logger from "@/logger";
  *
  * For each offer:
  * - Calls persistOffer() to persist company + offer
+ * - If offer has description (JobOfferDetail), scores it via matcher + scorer
+ * - Persists match/score to matches table
  * - Updates local counters and accumulator (if provided)
  * - Tracks affected company IDs (if affectedCompanyIds set provided)
  * - Logs skips at debug level, DB errors at error level
@@ -28,6 +38,9 @@ import * as logger from "@/logger";
  */
 export function ingestOffers(input: IngestOffersInput): IngestOffersResult {
   const { provider, offers, acc, affectedCompanyIds } = input;
+
+  // Load catalog once for the entire batch
+  const catalog = loadCatalog();
 
   // Local counters
   let upserted = 0;
@@ -45,6 +58,34 @@ export function ingestOffers(input: IngestOffersInput): IngestOffersResult {
       // Track affected company
       if (affectedCompanyIds) {
         affectedCompanyIds.add(result.companyId);
+      }
+
+      // Score offer if it has description (JobOfferDetail)
+      // Summary offers without description are skipped for scoring
+      if ("description" in offer) {
+        try {
+          const matchResult = matchOffer(offer as JobOfferDetail, catalog);
+          const scoreResult = scoreOffer(matchResult, catalog);
+
+          // Persist match/score to matches table
+          upsertMatch({
+            offer_id: result.offerId,
+            score: scoreResult.score,
+            matched_keywords_json: JSON.stringify(scoreResult),
+          });
+
+          // Track affected company for scoring changes
+          if (affectedCompanyIds) {
+            affectedCompanyIds.add(result.companyId);
+          }
+        } catch (err) {
+          // Log scoring failure but don't fail the entire ingestion
+          logger.warn("Failed to score offer, continuing", {
+            provider,
+            offerId: result.offerId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
       }
     } else if (result.reason === "company_unidentifiable") {
       skipped++;
