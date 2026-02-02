@@ -4,6 +4,7 @@
  * This module provides a testable entry point that combines:
  * - Run lifecycle management (withRun)
  * - Batch offer ingestion (ingestOffers)
+ * - Company aggregation (aggregateCompaniesAndPersist) - M4.B3.3
  *
  * Returns the complete execution context (runId, result, counters) for test assertions.
  */
@@ -16,14 +17,16 @@ import type {
 } from "@/types";
 import { withRun } from "./runLifecycle";
 import { ingestOffers } from "./ingestOffers";
+import { aggregateCompaniesAndPersist } from "./aggregateCompanies";
 import * as logger from "@/logger";
 
 /**
  * Run a batch ingestion with full lifecycle tracking
  *
- * Wraps `ingestOffers` in `withRun` to:
+ * Wraps `ingestOffers` + `aggregateCompaniesAndPersist` in `withRun` to:
  * - Create and finalize an ingestion run record
  * - Track counters through the accumulator
+ * - Aggregate affected companies at end-of-run
  * - Persist final counters on run completion
  *
  * Per-offer failures do not throw; only fatal init/db errors can throw.
@@ -45,12 +48,29 @@ export async function runOfferBatchIngestion(
     // Set offers_fetched to total offers attempted
     acc.counters.offers_fetched = offers.length;
 
-    // Run batch ingestion with accumulator
+    // Track affected company IDs for M4 aggregation
+    const affectedCompanyIds = new Set<number>();
+
+    // Run batch ingestion with accumulator + company tracking
     const ingestionResult = ingestOffers({
       provider,
       offers,
       acc,
+      affectedCompanyIds,
     });
+
+    // Run company aggregation for all affected companies
+    logger.info("Starting company aggregation for affected companies", {
+      affectedCompanies: affectedCompanyIds.size,
+    });
+
+    const aggregationResult = await aggregateCompaniesAndPersist(
+      Array.from(affectedCompanyIds),
+    );
+
+    // Update accumulator with aggregation results
+    acc.counters.companies_aggregated = aggregationResult.ok;
+    acc.counters.companies_failed = aggregationResult.failed;
 
     // Capture counters snapshot before withRun finalizes
     capturedCounters = { ...acc.counters };
@@ -65,6 +85,9 @@ export async function runOfferBatchIngestion(
     upserted: result.upserted,
     skipped: result.skipped,
     failed: result.failed,
+    affectedCompanies: result.affectedCompanies,
+    companiesAggregated: capturedCounters.companies_aggregated ?? 0,
+    companiesFailed: capturedCounters.companies_failed ?? 0,
   });
 
   return {

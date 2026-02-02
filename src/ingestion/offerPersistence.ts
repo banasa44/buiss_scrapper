@@ -121,7 +121,7 @@ export function persistOffer(input: PersistOfferInput): OfferPersistResult {
   // Step 3: Upsert offer (with error handling)
   try {
     const offerId = upsertOffer(offerInput);
-    return { ok: true, offerId };
+    return { ok: true, offerId, companyId };
   } catch (err) {
     logger.error("Failed to upsert offer", {
       provider,
@@ -129,6 +129,6 @@ export function persistOffer(input: PersistOfferInput): OfferPersistResult {
       companyId,
       error: err instanceof Error ? err.message : String(err),
     });
-    return { ok: false, reason: "db_error" };
+    return { ok: false, reason: "db_error", companyId };
   }
 }

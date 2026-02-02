@@ -211,6 +211,8 @@ export type IngestionRunUpdate = {
   http_429_count?: number | null;
   errors_count?: number | null;
   notes?: string | null;
+  companies_aggregated?: number | null;
+  companies_failed?: number | null;
 };
 
 /**
@@ -225,6 +227,8 @@ export type RunCounters = {
   offers_skipped?: number | null;
   offers_failed?: number | null;
   errors_count?: number | null;
+  companies_aggregated?: number | null;
+  companies_failed?: number | null;
 };
 
 /**

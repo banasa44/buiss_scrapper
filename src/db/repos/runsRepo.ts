@@ -71,6 +71,14 @@ export function finishRun(runId: number, update: IngestionRunUpdate): void {
     fields.push("notes = ?");
     values.push(update.notes ?? null);
   }
+  if (update.companies_aggregated !== undefined) {
+    fields.push("companies_aggregated = ?");
+    values.push(update.companies_aggregated ?? null);
+  }
+  if (update.companies_failed !== undefined) {
+    fields.push("companies_failed = ?");
+    values.push(update.companies_failed ?? null);
+  }
 
   if (fields.length === 0) {
     return; // Nothing to update

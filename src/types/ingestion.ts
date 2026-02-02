@@ -29,10 +29,14 @@ export type PersistCompanyInput = {
 
 /**
  * Result of an offer persistence attempt
+ *
+ * companyId is included in all cases to support tracking affected companies
+ * for M4 aggregation (even when offer upsert fails).
  */
 export type OfferPersistResult =
-  | { ok: true; offerId: number }
-  | { ok: false; reason: "company_unidentifiable" | "db_error" };
+  | { ok: true; offerId: number; companyId: number }
+  | { ok: false; reason: "company_unidentifiable" }
+  | { ok: false; reason: "db_error"; companyId: number };
 
 /**
  * Input for persisting an offer
@@ -60,6 +64,8 @@ export type IngestOffersInput = {
   provider: Provider;
   offers: (JobOfferSummary | JobOfferDetail)[];
   acc?: RunAccumulatorLike;
+  /** Optional set to collect affected company IDs (for M4 aggregation) */
+  affectedCompanyIds?: Set<number>;
 };
 
 /**
@@ -70,6 +76,8 @@ export type IngestOffersResult = {
   upserted: number;
   skipped: number;
   failed: number;
+  /** Number of unique companies affected during ingestion */
+  affectedCompanies: number;
 };
 
 /**

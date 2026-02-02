@@ -18,15 +18,16 @@ import * as logger from "@/logger";
  * For each offer:
  * - Calls persistOffer() to persist company + offer
  * - Updates local counters and accumulator (if provided)
+ * - Tracks affected company IDs (if affectedCompanyIds set provided)
  * - Logs skips at debug level, DB errors at error level
  *
  * Never throws for per-offer failures.
  *
- * @param input - Provider, offers array, and optional accumulator
- * @returns Summary with processed, upserted, skipped, failed counts
+ * @param input - Provider, offers array, optional accumulator, optional affectedCompanyIds set
+ * @returns Summary with processed, upserted, skipped, failed counts and affected companies
  */
 export function ingestOffers(input: IngestOffersInput): IngestOffersResult {
-  const { provider, offers, acc } = input;
+  const { provider, offers, acc, affectedCompanyIds } = input;
 
   // Local counters
   let upserted = 0;
@@ -40,6 +41,10 @@ export function ingestOffers(input: IngestOffersInput): IngestOffersResult {
       upserted++;
       if (acc) {
         acc.counters.offers_upserted = (acc.counters.offers_upserted ?? 0) + 1;
+      }
+      // Track affected company
+      if (affectedCompanyIds) {
+        affectedCompanyIds.add(result.companyId);
       }
     } else if (result.reason === "company_unidentifiable") {
       skipped++;
@@ -55,11 +60,16 @@ export function ingestOffers(input: IngestOffersInput): IngestOffersResult {
       if (acc) {
         acc.counters.offers_failed = (acc.counters.offers_failed ?? 0) + 1;
       }
+      // Track affected company even on DB error (company was created successfully)
+      if (affectedCompanyIds) {
+        affectedCompanyIds.add(result.companyId);
+      }
       // Note: persistOffer already logs the error details
     }
   }
 
   const processed = offers.length;
+  const affectedCompanies = affectedCompanyIds ? affectedCompanyIds.size : 0;
 
   logger.info("Offer batch ingestion complete", {
     provider,
@@ -67,7 +77,8 @@ export function ingestOffers(input: IngestOffersInput): IngestOffersResult {
     upserted,
     skipped,
     failed,
+    affectedCompanies,
   });
 
-  return { processed, upserted, skipped, failed };
+  return { processed, upserted, skipped, failed, affectedCompanies };
 }
