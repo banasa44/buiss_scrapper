@@ -142,6 +142,31 @@ WHERE co.normalized_name IS NOT NULL;
 CREATE INDEX idx_offers_company ON offers(company_id);
 CREATE INDEX idx_offers_updated ON offers(updated_at);
 
+-- Step 7b: Recreate matches table to fix foreign key reference
+-- When offers was renamed to offers_old, SQLite automatically updated the FK in matches
+-- to point to offers_old. We must recreate matches to point to the new offers table.
+
+-- Rename matches to matches_old
+ALTER TABLE matches RENAME TO matches_old;
+
+-- Create new matches table with FK pointing to new offers table
+CREATE TABLE matches (
+  offer_id INTEGER PRIMARY KEY,
+  score REAL NOT NULL DEFAULT 0.0,
+  matched_keywords_json TEXT NOT NULL,
+  reasons TEXT,
+  computed_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (offer_id) REFERENCES offers(id) ON DELETE CASCADE
+);
+
+-- Copy all data from matches_old
+INSERT INTO matches (offer_id, score, matched_keywords_json, reasons, computed_at)
+SELECT offer_id, score, matched_keywords_json, reasons, computed_at
+FROM matches_old;
+
+-- Drop old matches table
+DROP TABLE matches_old;
+
 -- Drop old offers table
 DROP TABLE offers_old;
 
