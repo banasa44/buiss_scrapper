@@ -255,3 +255,19 @@ export type MatchInput = {
   matched_keywords_json: string;
   reasons?: string | null;
 };
+
+/**
+ * Company offer row for M4 aggregation
+ *
+ * Minimal data needed by aggregateCompany() pure function.
+ * Joined from offers + matches tables.
+ */
+export type CompanyOfferAggRow = {
+  offerId: number;
+  canonicalOfferId: number | null;
+  repostCount: number;
+  publishedAt: string | null;
+  updatedAt: string | null;
+  score: number;
+  topCategoryId: string | null;
+};

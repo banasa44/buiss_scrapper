@@ -4,8 +4,14 @@
  * Data access layer for offers table.
  */
 
-import type { Offer, OfferInput, OfferCanonicalUpdateInput } from "@/types";
+import type {
+  Offer,
+  OfferInput,
+  OfferCanonicalUpdateInput,
+  CompanyOfferAggRow,
+} from "@/types";
 import { getDb } from "@/db";
+import { warn } from "@/logger";
 
 /**
  * Upsert an offer based on UNIQUE(provider, provider_offer_id)
@@ -234,5 +240,95 @@ export function updateOfferCanonical(
     throw new Error(
       `Cannot update canonical fields: offer id ${offerId} not found`,
     );
+  }
+}
+
+/**
+ * List all offers for a company with aggregation-relevant data
+ *
+ * Used by M4 aggregation logic to fetch minimal data needed to compute
+ * company-level signals.
+ *
+ * SQL strategy:
+ * - Joins offers with matches table (LEFT JOIN to include unscored offers)
+ * - For unscored offers: score=0, topCategoryId=null
+ * - Parses topCategoryId from matched_keywords_json (scoring result)
+ * - Ordered by offers.id for deterministic output
+ *
+ * Note: matched_keywords_json contains the ScoreResult which includes
+ * topCategoryId. If parsing fails, logs warning and returns null.
+ *
+ * @param companyId - Company ID to fetch offers for
+ * @returns Array of offer rows with aggregation data
+ */
+export function listCompanyOffersForAggregation(
+  companyId: number,
+): CompanyOfferAggRow[] {
+  const db = getDb();
+
+  // Query joins offers with matches to get score + category info
+  // LEFT JOIN ensures unscored offers are included with score=0
+  const rows = db
+    .prepare(
+      `
+    SELECT
+      o.id as offerId,
+      o.canonical_offer_id as canonicalOfferId,
+      o.repost_count as repostCount,
+      o.published_at as publishedAt,
+      o.updated_at as updatedAt,
+      COALESCE(m.score, 0) as score,
+      m.matched_keywords_json as matchedKeywordsJson
+    FROM offers o
+    LEFT JOIN matches m ON o.id = m.offer_id
+    WHERE o.company_id = ?
+    ORDER BY o.id ASC
+  `,
+    )
+    .all(companyId) as Array<{
+    offerId: number;
+    canonicalOfferId: number | null;
+    repostCount: number;
+    publishedAt: string | null;
+    updatedAt: string | null;
+    score: number;
+    matchedKeywordsJson: string | null;
+  }>;
+
+  // Parse topCategoryId from matched_keywords_json
+  return rows.map((row) => ({
+    offerId: row.offerId,
+    canonicalOfferId: row.canonicalOfferId,
+    repostCount: row.repostCount,
+    publishedAt: row.publishedAt,
+    updatedAt: row.updatedAt,
+    score: row.score,
+    topCategoryId: parseTopCategoryId(row.matchedKeywordsJson, row.offerId),
+  }));
+}
+
+/**
+ * Parse topCategoryId from matched_keywords_json
+ *
+ * The JSON contains a ScoreResult with topCategoryId field.
+ * If parsing fails or field is missing, returns null and logs warning.
+ */
+function parseTopCategoryId(
+  json: string | null,
+  offerId: number,
+): string | null {
+  if (!json) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(json);
+    return parsed.topCategoryId ?? null;
+  } catch (err) {
+    warn("Failed to parse topCategoryId from matched_keywords_json", {
+      offerId,
+      error: String(err),
+    });
+    return null;
   }
 }
