@@ -58,3 +58,16 @@ export type DuplicateDecision =
         | "desc_below_threshold" // Description similarity below threshold
         | "title_mismatch"; // Titles don't match and no desc comparison applicable
     };
+
+/**
+ * Minimal offer data needed to compute a content fingerprint.
+ *
+ * Used by fingerprint computation to generate deterministic SHA-256 hashes
+ * of normalized offer content for fast-path repost detection.
+ */
+export type OfferFingerprintInput = {
+  /** Offer title */
+  title?: string | null;
+  /** Offer description */
+  description?: string | null;
+};

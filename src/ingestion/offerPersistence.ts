@@ -26,10 +26,12 @@ import {
   upsertOffer,
   getOfferByProviderId,
   updateOfferLastSeenAt,
+  updateOfferCanonical,
   listCanonicalOffersForRepost,
+  findCanonicalOffersByFingerprint,
   incrementOfferRepostCount,
 } from "@/db";
-import { detectRepostDuplicate } from "@/signal/repost";
+import { detectRepostDuplicate, computeOfferFingerprint } from "@/signal/repost";
 import { persistCompanyAndSource } from "./companyPersistence";
 import * as logger from "@/logger";
 
@@ -173,6 +175,47 @@ export function persistOffer(input: PersistOfferInput): OfferPersistResult {
 
   // Step 4: New provider_offer_id - perform repost detection
   try {
+    // Fast-path: Check for fingerprint match first
+    // Compute fingerprint for incoming offer
+    const incomingFingerprint = computeOfferFingerprint({
+      title: offer.title,
+      description: "description" in offer ? offer.description : null,
+    });
+
+    if (incomingFingerprint) {
+      // Query for existing canonical offers with matching fingerprint
+      const fingerprintMatches = findCanonicalOffersByFingerprint(
+        incomingFingerprint,
+        companyId,
+      );
+
+      if (fingerprintMatches.length > 0) {
+        // Exact content match found - this is a deterministic repost
+        const canonicalOfferId = fingerprintMatches[0].id;
+
+        // Update canonical offer's repost tracking
+        incrementOfferRepostCount(canonicalOfferId, effectiveSeenAt);
+
+        logger.debug("Repost duplicate detected", {
+          provider,
+          providerOfferId: offer.ref.id,
+          canonicalOfferId,
+          detectionReason: "fingerprint_match",
+          companyId,
+        });
+
+        return {
+          ok: true,
+          reason: "repost_duplicate",
+          canonicalOfferId,
+          companyId,
+          detectionReason: "exact_title", // Map to existing detection reason for consistency
+          similarity: undefined,
+        };
+      }
+    }
+
+    // Fallback: Run full repost detection (similarity-based)
     // Fetch canonical offers for this company
     const candidates = listCanonicalOffersForRepost(companyId);
 
@@ -214,6 +257,33 @@ export function persistOffer(input: PersistOfferInput): OfferPersistResult {
 
     // Set last_seen_at for new canonical offer
     updateOfferLastSeenAt(offerId, effectiveSeenAt);
+
+    // Compute and store content fingerprint for new canonical offer
+    // If fingerprint computation fails (e.g., missing description), continue without it
+    try {
+      const fingerprint = computeOfferFingerprint({
+        title: offer.title,
+        description: "description" in offer ? offer.description : null,
+      });
+
+      if (fingerprint) {
+        updateOfferCanonical(offerId, { content_fingerprint: fingerprint });
+      } else {
+        logger.debug("Fingerprint not computed: missing required fields", {
+          provider,
+          offerId,
+          hasTitle: !!offer.title,
+          hasDescription: "description" in offer && !!offer.description,
+        });
+      }
+    } catch (err) {
+      // Log fingerprint computation failure but don't fail the entire operation
+      logger.warn("Failed to compute/store offer fingerprint", {
+        provider,
+        offerId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
 
     return { ok: true, offerId, companyId };
   } catch (err) {

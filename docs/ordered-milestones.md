@@ -114,7 +114,19 @@ Goal: export ranked companies to Sheets and validate end-to-end integrations.
 
 ---
 
-## M6 — Operationalization (state + scheduling) + runbook
+## M6 — Sheets Feedback Loop & Company Lifecycle
+
+Goal: allow the client to resolve companies from Google Sheets and propagate those decisions back into the system database safely.
+
+- [DEFINE] Specify feedback semantics and lifecycle rules
+- [DECISION] Choose feedback ingestion strategy
+- [BUILD] Implement Sheets feedback processor
+- [BUILD] Implement company resolution workflow
+- [ITEST] Add gated integration tests
+
+---
+
+## M7 — Operationalization (state + scheduling) + runbook
 
 Goal: make it hands-off to run daily with stable behavior.
 
@@ -126,7 +138,7 @@ Goal: make it hands-off to run daily with stable behavior.
 
 ---
 
-## M7 — Convenience layer (only if you still want it)
+## M8 — Convenience layer (only if you still want it)
 
 Goal: improve developer ergonomics once the pipeline is working.
 

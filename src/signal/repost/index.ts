@@ -3,3 +3,4 @@
  */
 
 export * from "./repostDetection";
+export * from "./offerFingerprint";
