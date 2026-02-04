@@ -31,7 +31,10 @@ import {
   findCanonicalOffersByFingerprint,
   incrementOfferRepostCount,
 } from "@/db";
-import { detectRepostDuplicate, computeOfferFingerprint } from "@/signal/repost";
+import {
+  detectRepostDuplicate,
+  computeOfferFingerprint,
+} from "@/signal/repost";
 import { persistCompanyAndSource } from "./companyPersistence";
 import * as logger from "@/logger";
 

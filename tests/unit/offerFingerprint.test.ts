@@ -12,12 +12,14 @@ describe("computeOfferFingerprint", () => {
     it("should produce identical fingerprints for identical content", () => {
       const offer1 = {
         title: "Senior Developer",
-        description: "We are looking for a senior developer with 5 years of experience in TypeScript and Node.js.",
+        description:
+          "We are looking for a senior developer with 5 years of experience in TypeScript and Node.js.",
       };
 
       const offer2 = {
         title: "Senior Developer",
-        description: "We are looking for a senior developer with 5 years of experience in TypeScript and Node.js.",
+        description:
+          "We are looking for a senior developer with 5 years of experience in TypeScript and Node.js.",
       };
 
       const fp1 = computeOfferFingerprint(offer1);

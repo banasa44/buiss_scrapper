@@ -109,7 +109,17 @@ Goal: export ranked companies to Sheets and validate end-to-end integrations.
 
 - [RESEARCH] Validate Google Sheets API limits
 - [DECISION] Choose Sheets export mode
-- [BUILD] Implement Sheets exporter
+- [BUILD] Implement Sheets exporter:
+  1. [BUILD-1] Create Sheets API client wrapper
+  2. [BUILD-2] Implement minimal read-only connector
+  3. [BUILD-3] Define sheet schema contract
+  4. [BUILD-4] Implement company-to-row mapper
+  5. [BUILD-5] Implement append-only exporter
+  6. [BUILD-6] Implement upsert/update logic
+  7. [BUILD-7] Add feedback-column preservation
+  8. [BUILD-8] Integrate exporter into pipeline
+  9. [BUILD-9] Error handling & retries
+  10. [BUILD-10] Operational logging & dry-run mode
 - [ITEST] Add gated integration tests
 
 ---
