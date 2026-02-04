@@ -9,6 +9,7 @@ import type {
   OfferInput,
   OfferCanonicalUpdateInput,
   CompanyOfferAggRow,
+  RepostCandidate,
 } from "@/types";
 import { getDb } from "@/db";
 import { warn } from "@/logger";
@@ -331,4 +332,41 @@ function parseTopCategoryId(
     });
     return null;
   }
+}
+
+/**
+ * List canonical offers for a company for repost detection
+ *
+ * Returns minimal data needed by the repost detection algorithm.
+ * Only includes canonical offers (canonical_offer_id IS NULL).
+ *
+ * Used by M4 repost detection logic to fetch candidates for duplicate comparison.
+ *
+ * @param companyId - Company ID to fetch canonical offers for
+ * @returns Array of minimal offer data for repost detection
+ */
+export function listCanonicalOffersForRepost(
+  companyId: number,
+): RepostCandidate[] {
+  const db = getDb();
+
+  const rows = db
+    .prepare(
+      `
+    SELECT
+      id,
+      title,
+      description,
+      last_seen_at as lastSeenAt,
+      published_at as publishedAt,
+      updated_at as updatedAt
+    FROM offers
+    WHERE company_id = ?
+      AND canonical_offer_id IS NULL
+    ORDER BY id ASC
+  `,
+    )
+    .all(companyId) as RepostCandidate[];
+
+  return rows;
 }
