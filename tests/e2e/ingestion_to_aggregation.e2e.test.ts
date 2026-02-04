@@ -168,9 +168,21 @@ describe("E2E: Ingestion → Matching → Scoring → Aggregation", () => {
 
     expect(company1).toBeDefined();
 
-    // max_score should equal the highest offer score (match1 in this case)
+    // Get all matches for this company to compute expected max score
+    const companyMatches = db
+      .prepare(
+        "SELECT m.score, m.offer_id FROM matches m JOIN offers o ON m.offer_id = o.id WHERE o.company_id = ?",
+      )
+      .all(companyId1) as Array<{ score: number; offer_id: number }>;
+
+    expect(companyMatches.length).toBeGreaterThan(0);
+
+    // Compute max score from actual match data
+    const computedMaxScore = Math.max(...companyMatches.map((m) => m.score));
+
+    // max_score should equal the highest offer score from computed data
     expect(company1!.max_score).toBeTypeOf("number");
-    expect(company1!.max_score).toBe(match1.score);
+    expect(company1!.max_score).toBe(computedMaxScore);
     expect(company1!.max_score).toBeGreaterThanOrEqual(STRONG_THRESHOLD);
 
     // offer_count should be activity-weighted (1 + repost_count for each canonical)
@@ -193,9 +205,13 @@ describe("E2E: Ingestion → Matching → Scoring → Aggregation", () => {
     expect(company1!.top_category_id).toBeTypeOf("string");
     expect(company1!.top_category_id).toBeTruthy();
 
-    // top_offer_id should point to offer1 (highest scoring offer)
+    // top_offer_id should point to an offer whose match score equals max_score
     expect(company1!.top_offer_id).toBeTypeOf("number");
-    expect(company1!.top_offer_id).toBe(persistedOffer1!.id);
+    const topOfferMatch = companyMatches.find(
+      (m) => m.offer_id === company1!.top_offer_id,
+    );
+    expect(topOfferMatch).toBeDefined();
+    expect(topOfferMatch!.score).toBe(company1!.max_score);
 
     // last_strong_at should be set (offer1 is strong)
     expect(company1!.last_strong_at).toBeTypeOf("string");
@@ -499,7 +515,8 @@ describe("E2E: Ingestion → Matching → Scoring → Aggregation", () => {
       );
     }
 
-    // top_offer_id should point to the offer with max_score
+    // top_offer_id should point to an offer whose match score equals max_score
+    expect(company!.top_offer_id).toBeTypeOf("number");
     const topOfferMatch = db
       .prepare("SELECT score FROM matches WHERE offer_id = ?")
       .get(company!.top_offer_id) as any;

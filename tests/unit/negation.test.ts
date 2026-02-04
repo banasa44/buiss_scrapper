@@ -28,29 +28,22 @@ describe("isNegated", () => {
       expect(isNegated(tokens, 2, 1)).toBe(true);
     });
 
-    it("should detect negation at window boundary (BEFORE = 8)", () => {
-      // Cue at exactly 8 tokens before match start (within window)
-      const tokens = ["no", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "aws"];
-      expect(isNegated(tokens, 8, 1)).toBe(true);
+    it("should detect negation at window boundary (BEFORE)", () => {
+      // Cue at exactly NEGATION_WINDOW_BEFORE tokens before match start (within window)
+      const tokens = [
+        "no",
+        ...Array(NEGATION_WINDOW_BEFORE - 1).fill("t"),
+        "aws",
+      ];
+      expect(isNegated(tokens, NEGATION_WINDOW_BEFORE, 1)).toBe(true);
     });
   });
 
   describe("negation cue BEFORE match (outside window)", () => {
     it("should NOT detect negation beyond BEFORE window", () => {
-      // Cue at 9 tokens before match start (outside window of 8)
-      const tokens = [
-        "no",
-        "t1",
-        "t2",
-        "t3",
-        "t4",
-        "t5",
-        "t6",
-        "t7",
-        "t8",
-        "aws",
-      ];
-      expect(isNegated(tokens, 9, 1)).toBe(false);
+      // Cue at NEGATION_WINDOW_BEFORE + 1 tokens before match start (outside window)
+      const tokens = ["no", ...Array(NEGATION_WINDOW_BEFORE).fill("t"), "aws"];
+      expect(isNegated(tokens, NEGATION_WINDOW_BEFORE + 1, 1)).toBe(false);
     });
   });
 
@@ -61,17 +54,21 @@ describe("isNegated", () => {
       expect(isNegated(tokens, 0, 1)).toBe(true);
     });
 
-    it("should detect negation at window boundary (AFTER = 2)", () => {
-      // Cue at exactly 2 tokens after match end (within window)
-      const tokens = ["aws", "t1", "not"];
+    it("should detect negation at window boundary (AFTER)", () => {
+      // Cue at exactly NEGATION_WINDOW_AFTER tokens after match end (within window)
+      const tokens = [
+        "aws",
+        ...Array(NEGATION_WINDOW_AFTER - 1).fill("t"),
+        "not",
+      ];
       expect(isNegated(tokens, 0, 1)).toBe(true);
     });
   });
 
   describe("negation cue AFTER match (outside window)", () => {
     it("should NOT detect negation beyond AFTER window", () => {
-      // Cue at 3 tokens after match end (outside window of 2)
-      const tokens = ["aws", "t1", "t2", "not"];
+      // Cue at NEGATION_WINDOW_AFTER + 1 tokens after match end (outside window)
+      const tokens = ["aws", ...Array(NEGATION_WINDOW_AFTER).fill("t"), "not"];
       expect(isNegated(tokens, 0, 1)).toBe(false);
     });
   });

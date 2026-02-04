@@ -158,11 +158,10 @@ describe("scoreOffer", () => {
     const matchResult = createMatchResult([hit]);
     const result = scoreOffer(matchResult, catalog);
 
-    // tier3 (4.0) × title (1.5) = 6.0
-    expect(result.score).toBe(6);
-    expect(result.reasons.categories[0].points).toBe(
-      TIER_WEIGHTS[3] * FIELD_WEIGHTS.title,
-    );
+    // tier3 × title = TIER_WEIGHTS[3] × FIELD_WEIGHTS.title
+    const expectedScore = TIER_WEIGHTS[3] * FIELD_WEIGHTS.title;
+    expect(result.score).toBe(expectedScore);
+    expect(result.reasons.categories[0].points).toBe(expectedScore);
   });
 
   it("should NOT stack points for multiple hits from same category", () => {
@@ -197,10 +196,11 @@ describe("scoreOffer", () => {
     const matchResult = createMatchResult(hits);
     const result = scoreOffer(matchResult, catalog);
 
-    // Should only count highest: tier3 × title = 6.0
+    // Should only count highest: tier3 × title
+    const expectedScore = TIER_WEIGHTS[3] * FIELD_WEIGHTS.title;
     expect(result.reasons.categories).toHaveLength(1);
     expect(result.reasons.categories[0].hitCount).toBe(3);
-    expect(result.score).toBe(6);
+    expect(result.score).toBe(expectedScore);
   });
 
   it("should sum points from multiple different categories", () => {
@@ -234,9 +234,14 @@ describe("scoreOffer", () => {
     const matchResult = createMatchResult(hits);
     const result = scoreOffer(matchResult, catalog);
 
-    // (4.0×1.5) + (2.5×1.0) + (1.0×1.0) = 9.5 → 10
+    // (tier3×title) + (tier2×description) + (tier1×description)
+    const expectedRaw =
+      TIER_WEIGHTS[3] * FIELD_WEIGHTS.title +
+      TIER_WEIGHTS[2] * FIELD_WEIGHTS.description +
+      TIER_WEIGHTS[1] * FIELD_WEIGHTS.description;
+    const expectedScore = Math.min(Math.round(expectedRaw), MAX_SCORE);
     expect(result.reasons.categories).toHaveLength(3);
-    expect(result.score).toBe(10);
+    expect(result.score).toBe(expectedScore);
   });
 
   it("should apply phrase boosts without stacking per unique phrase", () => {
@@ -340,13 +345,15 @@ describe("scoreOffer", () => {
     const result = scoreOffer(matchResult, catalog);
 
     // Should only score active tier2 keyword + active phrase
+    const expectedScore = Math.round(
+      TIER_WEIGHTS[2] * FIELD_WEIGHTS.description + PHRASE_BOOST_POINTS,
+    );
     expect(result.reasons.negatedKeywordHits).toBe(1);
     expect(result.reasons.negatedPhraseHits).toBe(1);
     expect(result.reasons.categories).toHaveLength(1);
     expect(result.reasons.categories[0].categoryId).toBe("cat_tier2");
     expect(result.reasons.phrases).toHaveLength(1);
-    // tier2 × description (2.5) + phrase (1.5) = 4.0
-    expect(result.score).toBe(4);
+    expect(result.score).toBe(expectedScore);
   });
 
   it("should select category with highest points as topCategoryId", () => {
