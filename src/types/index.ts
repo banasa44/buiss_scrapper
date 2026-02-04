@@ -4,6 +4,7 @@ export * from "./ingestion";
 export * from "./catalog";
 export * from "./matching";
 export * from "./scoring";
+export * from "./repost";
 export * from "./clients/http";
 export * from "./clients/job_offers";
 // InfoJobs types are intentionally NOT exported from the global barrel.

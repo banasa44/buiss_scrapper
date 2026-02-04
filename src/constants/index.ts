@@ -5,3 +5,4 @@ export * from "./textNormalization";
 export * from "./catalog";
 export * from "./scoring";
 export * from "./negation";
+export * from "./repost";
