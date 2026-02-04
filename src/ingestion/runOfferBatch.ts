@@ -60,10 +60,6 @@ export async function runOfferBatchIngestion(
     });
 
     // Run company aggregation for all affected companies
-    logger.info("Starting company aggregation for affected companies", {
-      affectedCompanies: affectedCompanyIds.size,
-    });
-
     const aggregationResult = await aggregateCompaniesAndPersist(
       Array.from(affectedCompanyIds),
     );
@@ -78,17 +74,21 @@ export async function runOfferBatchIngestion(
     return ingestionResult;
   });
 
-  logger.info("Run-wrapped batch ingestion complete", {
+  // Final run summary: exactly one info log per run with all telemetry
+  logger.info("Run completed", {
     runId: capturedRunId,
     provider,
-    processed: result.processed,
-    upserted: result.upserted,
-    duplicates: result.duplicates,
-    skipped: result.skipped,
-    failed: result.failed,
-    affectedCompanies: result.affectedCompanies,
-    companiesAggregated: capturedCounters.companies_aggregated ?? 0,
-    companiesFailed: capturedCounters.companies_failed ?? 0,
+    status: "success",
+    counters: {
+      offersFetched: capturedCounters.offers_fetched ?? 0,
+      offersUpserted: capturedCounters.offers_upserted ?? 0,
+      offersDuplicates: capturedCounters.offers_duplicates ?? 0,
+      offersSkipped: capturedCounters.offers_skipped ?? 0,
+      offersFailed: capturedCounters.offers_failed ?? 0,
+      companiesAggregated: capturedCounters.companies_aggregated ?? 0,
+      companiesFailed: capturedCounters.companies_failed ?? 0,
+      affectedCompanies: result.affectedCompanies,
+    },
   });
 
   return {

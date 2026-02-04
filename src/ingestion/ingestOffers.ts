@@ -132,16 +132,6 @@ export function ingestOffers(input: IngestOffersInput): IngestOffersResult {
   const processed = offers.length;
   const affectedCompanies = affectedCompanyIds ? affectedCompanyIds.size : 0;
 
-  logger.info("Offer batch ingestion complete", {
-    provider,
-    processed,
-    upserted,
-    duplicates,
-    skipped,
-    failed,
-    affectedCompanies,
-  });
-
   return {
     processed,
     upserted,

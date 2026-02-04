@@ -189,7 +189,7 @@ export function persistOffer(input: PersistOfferInput): OfferPersistResult {
       // Repost detected - update canonical offer, skip insert
       incrementOfferRepostCount(decision.canonicalOfferId, effectiveSeenAt);
 
-      logger.info("Repost duplicate detected", {
+      logger.debug("Repost duplicate detected", {
         provider,
         providerOfferId: offer.ref.id,
         canonicalOfferId: decision.canonicalOfferId,
