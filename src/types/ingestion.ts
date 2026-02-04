@@ -36,7 +36,15 @@ export type PersistCompanyInput = {
 export type OfferPersistResult =
   | { ok: true; offerId: number; companyId: number }
   | { ok: false; reason: "company_unidentifiable" }
-  | { ok: false; reason: "db_error"; companyId: number };
+  | { ok: false; reason: "db_error"; companyId: number }
+  | {
+      ok: true;
+      reason: "repost_duplicate";
+      canonicalOfferId: number;
+      companyId: number;
+      detectionReason: "exact_title" | "desc_similarity";
+      similarity?: number;
+    };
 
 /**
  * Input for persisting an offer
@@ -76,6 +84,8 @@ export type IngestOffersResult = {
   upserted: number;
   skipped: number;
   failed: number;
+  /** Number of offers detected as repost duplicates (not inserted) */
+  duplicates: number;
   /** Number of unique companies affected during ingestion */
   affectedCompanies: number;
 };

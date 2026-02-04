@@ -167,6 +167,40 @@ export function incrementOfferRepostCount(
 }
 
 /**
+ * Update last_seen_at for an offer
+ *
+ * Used when the same (provider, provider_offer_id) is seen again
+ * to track when this offer was last observed, without incrementing repost_count.
+ *
+ * @param offerId - Offer ID to update
+ * @param lastSeenAt - ISO timestamp of when this offer was last seen
+ * @throws Error if offer does not exist
+ */
+export function updateOfferLastSeenAt(
+  offerId: number,
+  lastSeenAt: string,
+): void {
+  const db = getDb();
+
+  const result = db
+    .prepare(
+      `
+    UPDATE offers
+    SET last_seen_at = ?,
+        last_updated_at = datetime('now')
+    WHERE id = ?
+  `,
+    )
+    .run(lastSeenAt, offerId);
+
+  if (result.changes === 0) {
+    throw new Error(
+      `Cannot update last_seen_at: offer id ${offerId} not found`,
+    );
+  }
+}
+
+/**
  * Find canonical offers by content fingerprint and company
  *
  * Used by M4 dedupe logic to quickly find potential duplicates

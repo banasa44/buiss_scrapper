@@ -46,11 +46,31 @@ export function ingestOffers(input: IngestOffersInput): IngestOffersResult {
   let upserted = 0;
   let skipped = 0;
   let failed = 0;
+  let duplicates = 0;
 
   for (const offer of offers) {
     const result = persistOffer({ offer, provider });
 
     if (result.ok) {
+      // Check if this is a repost duplicate or a normal insert/update
+      if ("reason" in result && result.reason === "repost_duplicate") {
+        // Repost duplicate detected - no new offer inserted
+        duplicates++;
+        if (acc) {
+          acc.counters.offers_duplicates =
+            (acc.counters.offers_duplicates ?? 0) + 1;
+        }
+
+        // Track affected company for aggregation (repost_count changed)
+        if (affectedCompanyIds) {
+          affectedCompanyIds.add(result.companyId);
+        }
+
+        // Skip matching/scoring for reposts (no new offer row exists)
+        continue;
+      }
+
+      // Normal insert/update (offerId is present)
       upserted++;
       if (acc) {
         acc.counters.offers_upserted = (acc.counters.offers_upserted ?? 0) + 1;
@@ -116,10 +136,18 @@ export function ingestOffers(input: IngestOffersInput): IngestOffersResult {
     provider,
     processed,
     upserted,
+    duplicates,
     skipped,
     failed,
     affectedCompanies,
   });
 
-  return { processed, upserted, skipped, failed, affectedCompanies };
+  return {
+    processed,
+    upserted,
+    duplicates,
+    skipped,
+    failed,
+    affectedCompanies,
+  };
 }

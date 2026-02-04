@@ -83,6 +83,7 @@ export async function runOfferBatchIngestion(
     provider,
     processed: result.processed,
     upserted: result.upserted,
+    duplicates: result.duplicates,
     skipped: result.skipped,
     failed: result.failed,
     affectedCompanies: result.affectedCompanies,

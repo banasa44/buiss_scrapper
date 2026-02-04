@@ -226,6 +226,7 @@ export type RunCounters = {
   offers_upserted?: number | null;
   offers_skipped?: number | null;
   offers_failed?: number | null;
+  offers_duplicates?: number | null;
   errors_count?: number | null;
   companies_aggregated?: number | null;
   companies_failed?: number | null;

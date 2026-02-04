@@ -22,7 +22,14 @@ import type {
   OfferPersistResult,
   PersistOfferInput,
 } from "@/types";
-import { upsertOffer } from "@/db";
+import {
+  upsertOffer,
+  getOfferByProviderId,
+  updateOfferLastSeenAt,
+  listCanonicalOffersForRepost,
+  incrementOfferRepostCount,
+} from "@/db";
+import { detectRepostDuplicate } from "@/signal/repost";
 import { persistCompanyAndSource } from "./companyPersistence";
 import * as logger from "@/logger";
 
@@ -39,6 +46,19 @@ function serializeMetadata(metadata?: JobOfferMetadata): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Compute effective "last seen at" timestamp for an offer
+ *
+ * Priority: updatedAt > publishedAt > current time
+ * This represents when the offer was last observed by the provider.
+ *
+ * @param offer - Canonical job offer
+ * @returns ISO 8601 timestamp string
+ */
+function computeEffectiveSeenAt(offer: PersistOfferInput["offer"]): string {
+  return offer.updatedAt || offer.publishedAt || new Date().toISOString();
 }
 
 /**
@@ -86,13 +106,19 @@ function buildOfferInput(
  * This function:
  * 1. Persists the company (and provider source link) first
  * 2. If company is unidentifiable, skips the offer (returns failure result)
- * 3. Builds the OfferInput from canonical types
- * 4. Upserts the offer (soft failure: logs and returns failure result)
+ * 3. Computes effective "last seen at" timestamp
+ * 4. Checks if this exact (provider, provider_offer_id) already exists:
+ *    - If yes: upserts normally, updates last_seen_at, proceeds with matching/scoring
+ * 5. If not found, performs repost detection:
+ *    - Fetches canonical offers for the company
+ *    - Runs pure repost detection algorithm
+ *    - If duplicate detected: increments repost_count on canonical, skips insert
+ *    - If not duplicate: proceeds with normal insert
  *
  * Per-offer failures do not throw; they return a discriminated result.
  *
  * @param input - Offer data and provider
- * @returns Discriminated result: ok with offerId, or not ok with reason
+ * @returns Discriminated result: ok with offerId, repost, or not ok with reason
  */
 export function persistOffer(input: PersistOfferInput): OfferPersistResult {
   const { offer, provider } = input;
@@ -115,15 +141,83 @@ export function persistOffer(input: PersistOfferInput): OfferPersistResult {
 
   const { companyId } = companyResult;
 
-  // Step 2: Build offer input
-  const offerInput = buildOfferInput(offer, provider, companyId);
+  // Step 2: Compute effective seen timestamp
+  const effectiveSeenAt = computeEffectiveSeenAt(offer);
 
-  // Step 3: Upsert offer (with error handling)
+  // Step 3: Check if this exact (provider, provider_offer_id) already exists
+  // This is the "same offer" short-circuit - same provider_offer_id = update, not repost
+  const existingOffer = getOfferByProviderId(provider, offer.ref.id);
+
+  if (existingOffer) {
+    // Same offer seen again - treat as normal update
+    // Build offer input and upsert (this updates content if changed)
+    const offerInput = buildOfferInput(offer, provider, companyId);
+
+    try {
+      const offerId = upsertOffer(offerInput);
+
+      // Update last_seen_at separately (not handled by upsertOffer)
+      updateOfferLastSeenAt(offerId, effectiveSeenAt);
+
+      return { ok: true, offerId, companyId };
+    } catch (err) {
+      logger.error("Failed to upsert existing offer", {
+        provider,
+        offerId: offer.ref.id,
+        companyId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return { ok: false, reason: "db_error", companyId };
+    }
+  }
+
+  // Step 4: New provider_offer_id - perform repost detection
   try {
+    // Fetch canonical offers for this company
+    const candidates = listCanonicalOffersForRepost(companyId);
+
+    // Run pure repost detection
+    const decision = detectRepostDuplicate(
+      {
+        title: offer.title,
+        description: "description" in offer ? offer.description : null,
+      },
+      candidates,
+    );
+
+    if (decision.kind === "duplicate") {
+      // Repost detected - update canonical offer, skip insert
+      incrementOfferRepostCount(decision.canonicalOfferId, effectiveSeenAt);
+
+      logger.info("Repost duplicate detected", {
+        provider,
+        providerOfferId: offer.ref.id,
+        canonicalOfferId: decision.canonicalOfferId,
+        detectionReason: decision.reason,
+        similarity: decision.similarity,
+        companyId,
+      });
+
+      return {
+        ok: true,
+        reason: "repost_duplicate",
+        canonicalOfferId: decision.canonicalOfferId,
+        companyId,
+        detectionReason: decision.reason,
+        similarity: decision.similarity,
+      };
+    }
+
+    // Not a duplicate - proceed with normal insert
+    const offerInput = buildOfferInput(offer, provider, companyId);
     const offerId = upsertOffer(offerInput);
+
+    // Set last_seen_at for new canonical offer
+    updateOfferLastSeenAt(offerId, effectiveSeenAt);
+
     return { ok: true, offerId, companyId };
   } catch (err) {
-    logger.error("Failed to upsert offer", {
+    logger.error("Failed during repost detection or offer insert", {
       provider,
       offerId: offer.ref.id,
       companyId,
