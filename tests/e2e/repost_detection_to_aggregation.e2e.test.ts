@@ -149,23 +149,32 @@ describe("E2E: Repost Detection → Aggregation", () => {
   it("should handle multiple distinct offers correctly (different provider_offer_ids)", async () => {
     // ========================================================================
     // ARRANGE: Create 3 distinct offers from same company
+    // With different titles AND sufficiently different descriptions
     // ========================================================================
 
-    const offer1 = fixtureToOffer(
-      fx01StrongUsd,
-      "distinct-001",
-      "2024-01-10T10:00:00Z",
-    );
-    const offer2 = fixtureToOffer(
-      fx01StrongUsd,
-      "distinct-002",
-      "2024-01-15T10:00:00Z",
-    );
-    const offer3 = fixtureToOffer(
-      fx01StrongUsd,
-      "distinct-003",
-      "2024-01-20T10:00:00Z",
-    );
+    const baseDesc =
+      "We manage large Google Ads and Meta Ads budgets. Experience with AWS (EC2, S3) and payments via Stripe.";
+
+    const offer1 = {
+      ...fixtureToOffer(fx01StrongUsd, "distinct-001", "2024-01-10T10:00:00Z"),
+      title: "Senior Backend Engineer - Python",
+      description:
+        baseDesc + " Backend focus: Python, Django, PostgreSQL. USD invoicing.",
+    };
+    const offer2 = {
+      ...fixtureToOffer(fx01StrongUsd, "distinct-002", "2024-01-15T10:00:00Z"),
+      title: "Frontend Developer - React Expert",
+      description:
+        baseDesc +
+        " Frontend focus: React, TypeScript, Redux. International team.",
+    };
+    const offer3 = {
+      ...fixtureToOffer(fx01StrongUsd, "distinct-003", "2024-01-20T10:00:00Z"),
+      title: "DevOps Engineer - Kubernetes",
+      description:
+        baseDesc +
+        " DevOps focus: Kubernetes, Docker, CI/CD pipelines. Remote work.",
+    };
 
     // ========================================================================
     // ACT: Ingest all 3 offers

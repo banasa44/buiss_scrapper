@@ -21,6 +21,8 @@ import * as companiesRepo from "@/db/repos/companiesRepo";
 
 // Import fixture with strong signal
 import fx01StrongUsd from "../fixtures/infojobs/fx01_strong_usd_signal.json";
+import fx02NegationAws from "../fixtures/infojobs/fx02_negation_aws.json";
+import fx03UrlOnlyStripe from "../fixtures/infojobs/fx03_url_only_stripe.json";
 
 describe("E2E: Bad Record Handling - Pipeline Resilience", () => {
   let dbHarness: TestDbHarness;
@@ -186,11 +188,22 @@ describe("E2E: Bad Record Handling - Pipeline Resilience", () => {
     // ARRANGE: Create batch with alternating valid/invalid offers
     // ========================================================================
 
-    const validOffer1 = fixtureToOffer(fx01StrongUsd, "valid-001");
+    // Create offers from different fixtures but same company
+    // (to test they aggregate together despite different content)
+    const validOffer1 = {
+      ...fixtureToOffer(fx01StrongUsd, "valid-001"),
+      company: { name: "Acme Corp", normalizedName: "acme corp" },
+    };
     const invalidOffer1 = createUnidentifiableOffer("invalid-001");
-    const validOffer2 = fixtureToOffer(fx01StrongUsd, "valid-002");
+    const validOffer2 = {
+      ...fixtureToOffer(fx02NegationAws, "valid-002"),
+      company: { name: "Acme Corp", normalizedName: "acme corp" },
+    };
     const invalidOffer2 = createUnidentifiableOffer("invalid-002");
-    const validOffer3 = fixtureToOffer(fx01StrongUsd, "valid-003");
+    const validOffer3 = {
+      ...fixtureToOffer(fx03UrlOnlyStripe, "valid-003"),
+      company: { name: "Acme Corp", normalizedName: "acme corp" },
+    };
 
     const offers = [
       validOffer1,
