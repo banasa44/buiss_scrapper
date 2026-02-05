@@ -3,3 +3,4 @@
  */
 
 export * from "./sheetReader";
+export * from "./companyRowMapper";

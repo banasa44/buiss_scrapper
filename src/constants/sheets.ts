@@ -77,3 +77,18 @@ export const VALID_RESOLUTIONS = [
   "ACCEPTED",
   "REJECTED",
 ] as const;
+
+/**
+ * Default resolution for new company rows
+ */
+export const DEFAULT_RESOLUTION = "PENDING";
+
+/**
+ * Number of decimal places for score formatting in sheet exports
+ */
+export const SCORE_DECIMAL_PLACES = 1;
+
+/**
+ * Placeholder text for companies with missing display name
+ */
+export const NO_NAME_PLACEHOLDER = "(no name)";
