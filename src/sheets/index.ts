@@ -13,3 +13,4 @@ export * from "./feedbackComparison";
 export * from "./feedbackValidation";
 export * from "./feedbackWindow";
 export * from "./processSheetsFeedback";
+export * from "./feedbackPersistence";

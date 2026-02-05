@@ -18,7 +18,11 @@ import type {
 import { withRun } from "./runLifecycle";
 import { ingestOffers } from "./ingestOffers";
 import { aggregateCompaniesAndPersist } from "./aggregateCompanies";
-import { syncCompaniesToSheet } from "@/sheets";
+import {
+  syncCompaniesToSheet,
+  processSheetsFeedback,
+  applyValidatedFeedbackPlanToDb,
+} from "@/sheets";
 import { GoogleSheetsClient } from "@/clients/googleSheets";
 import { GOOGLE_SHEETS_SPREADSHEET_ID_ENV } from "@/constants/clients/googleSheets";
 import { loadCatalog } from "@/catalog";
@@ -92,6 +96,55 @@ export async function runOfferBatchIngestion(
             updatedCount: sheetsResult.updatedCount,
             skippedCount: sheetsResult.skippedCount,
             errors: sheetsResult.errors,
+          });
+        }
+
+        // M6: Process feedback loop immediately after Sheets sync
+        // Nightly gated (03:00-06:00), best-effort error handling
+        try {
+          const feedbackResult = await processSheetsFeedback(sheetsClient);
+
+          if (
+            feedbackResult.ok &&
+            !feedbackResult.skipped &&
+            feedbackResult.validatedPlan
+          ) {
+            // Apply validated changes to DB (update resolution + delete offers)
+            const applyResult = applyValidatedFeedbackPlanToDb(
+              feedbackResult.validatedPlan,
+            );
+
+            logger.info("Feedback loop completed", {
+              resolutionUpdates: {
+                attempted: applyResult.attempted,
+                updated: applyResult.updated,
+                failed: applyResult.failed,
+                skipped: applyResult.skipped,
+              },
+              offerDeletions: {
+                attempted: applyResult.offerDeletionAttempted,
+                deleted: applyResult.offersDeleted,
+                failed: applyResult.offerDeletionsFailed,
+              },
+              changeClassification: {
+                destructive: feedbackResult.validatedPlan.destructiveCount,
+                reversal: feedbackResult.validatedPlan.reversalCount,
+                informational: feedbackResult.validatedPlan.informationalCount,
+              },
+            });
+          } else if (feedbackResult.skipped) {
+            // Window gate blocked - already logged by processSheetsFeedback
+            // No additional logging needed
+          } else {
+            // Error occurred - already logged by processSheetsFeedback
+            logger.warn("Feedback loop skipped due to processing error", {
+              error: feedbackResult.error,
+            });
+          }
+        } catch (err) {
+          // Best-effort: feedback loop failure should not fail the run
+          logger.warn("Feedback loop failed (non-fatal)", {
+            error: String(err),
           });
         }
       } catch (err) {
