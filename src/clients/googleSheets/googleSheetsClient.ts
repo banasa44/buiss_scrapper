@@ -36,6 +36,7 @@ import {
 } from "@/constants/clients/googleSheets";
 import * as logger from "@/logger";
 import { createHash, createSign } from "crypto";
+import { normalizePrivateKey } from "@/utils/sheets/sheetsHelpers";
 
 /**
  * Google Sheets API error
@@ -75,22 +76,38 @@ export class GoogleSheetsClient {
 
     // Load credentials from config or environment
     if (config.credentials) {
-      this.credentials = config.credentials;
-    } else {
-      const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || "";
-      const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || "";
+      const { clientEmail, privateKey } = config.credentials;
 
       if (!clientEmail || !privateKey) {
         throw new Error(
           "Google Sheets authentication configuration missing: " +
-            "GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY " +
-            "environment variables are required when credentials are not provided in config",
+            "credentials.clientEmail and credentials.privateKey are required " +
+            "when credentials are provided in config",
+        );
+      }
+
+      this.credentials = {
+        ...config.credentials,
+        privateKey: normalizePrivateKey(privateKey, "credentials.privateKey"),
+      };
+    } else {
+      const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || "";
+      const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
+
+      if (!clientEmail) {
+        throw new Error(
+          "Google Sheets authentication configuration missing: " +
+            "GOOGLE_SERVICE_ACCOUNT_EMAIL environment variable is required " +
+            "when credentials are not provided in config",
         );
       }
 
       this.credentials = {
         clientEmail,
-        privateKey: privateKey.replace(/\\n/g, "\n"),
+        privateKey: normalizePrivateKey(
+          privateKey,
+          "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY",
+        ),
         projectId: process.env.GOOGLE_PROJECT_ID,
       };
     }
@@ -196,6 +213,15 @@ export class GoogleSheetsClient {
         `Failed to authenticate with Google Sheets API: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
+  }
+
+  /**
+   * Validate authentication configuration by fetching an access token
+   *
+   * Throws on missing/invalid credentials.
+   */
+  async assertAuthReady(): Promise<void> {
+    await this.getAccessToken();
   }
 
   /**

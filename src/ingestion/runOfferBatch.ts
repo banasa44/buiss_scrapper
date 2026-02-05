@@ -79,8 +79,27 @@ export async function runOfferBatchIngestion(
     // Sync companies to Sheets (best-effort, don't fail run if Sheets unavailable)
     const spreadsheetId = process.env[GOOGLE_SHEETS_SPREADSHEET_ID_ENV];
     if (spreadsheetId) {
+      let sheetsClient: GoogleSheetsClient;
+
       try {
-        const sheetsClient = new GoogleSheetsClient({ spreadsheetId });
+        sheetsClient = new GoogleSheetsClient({ spreadsheetId });
+      } catch (err) {
+        logger.error("Sheets client initialization failed", {
+          error: String(err),
+        });
+        throw err;
+      }
+
+      try {
+        await sheetsClient.assertAuthReady();
+      } catch (err) {
+        logger.error("Sheets authentication failed during initialization", {
+          error: String(err),
+        });
+        throw err;
+      }
+
+      try {
         const catalog = loadCatalog();
         const sheetsResult = await syncCompaniesToSheet(sheetsClient, catalog);
 

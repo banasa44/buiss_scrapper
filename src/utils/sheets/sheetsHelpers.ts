@@ -65,3 +65,67 @@ export function buildMetricUpdateRange(rowIndex: number): string {
   const lastMetricCol = colIndexToLetter(COMPANY_SHEET_LAST_METRIC_COL_INDEX);
   return `${COMPANY_SHEET_NAME}!${firstMetricCol}${rowIndex}:${lastMetricCol}${rowIndex}`;
 }
+
+/**
+ * Normalize and validate Google Service Account private key from env/config
+ *
+ * Handles common .env formatting issues:
+ * - Strips surrounding quotes (" or ')
+ * - Converts literal \\n sequences to actual newlines
+ * - Normalizes \\r\\n to \\n
+ * - Trims whitespace
+ *
+ * Validates PEM format markers are present to catch misconfigurations early.
+ *
+ * @param raw - Raw private key value (may be undefined)
+ * @param source - Source description for error messages (e.g., "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY")
+ * @returns Normalized private key string
+ * @throws Error if key is missing, empty, or lacks required PEM markers
+ */
+export function normalizePrivateKey(
+  raw: string | undefined,
+  source: string,
+): string {
+  if (!raw) {
+    throw new Error(
+      `Google Sheets authentication configuration error: ${source} is missing or empty. ` +
+        `Expected format: "-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n"`,
+    );
+  }
+
+  // Trim and strip surrounding quotes
+  let normalized = raw.trim();
+  if (
+    (normalized.startsWith('"') && normalized.endsWith('"')) ||
+    (normalized.startsWith("'") && normalized.endsWith("'"))
+  ) {
+    normalized = normalized.slice(1, -1);
+  }
+
+  // Replace literal \n and \r\n with actual newlines
+  normalized = normalized.replace(/\\r\\n/g, "\n").replace(/\\n/g, "\n");
+
+  // Final trim
+  normalized = normalized.trim();
+
+  // Validate non-empty after normalization
+  if (!normalized) {
+    throw new Error(
+      `Google Sheets authentication configuration error: ${source} is empty after normalization.`,
+    );
+  }
+
+  // Validate PEM markers
+  if (
+    !normalized.includes("-----BEGIN PRIVATE KEY-----") ||
+    !normalized.includes("-----END PRIVATE KEY-----")
+  ) {
+    throw new Error(
+      `Google Sheets authentication configuration error: ${source} does not contain valid PEM markers. ` +
+        `Expected "-----BEGIN PRIVATE KEY-----" and "-----END PRIVATE KEY-----". ` +
+        `Check that the full key is provided.`,
+    );
+  }
+
+  return normalized;
+}

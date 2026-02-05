@@ -8,6 +8,14 @@ dist/
 .env
 .env.local
 
+# Google Service Account Keys
+*.json
+!package.json
+!package-lock.json
+!tsconfig*.json
+!vitest.config.json
+!data/catalog.json
+
 # IDE
 .vscode/
 .idea/
