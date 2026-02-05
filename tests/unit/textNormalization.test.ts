@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { normalizeToTokens } from "@/utils/textNormalization";
+import { normalizeToTokens } from "@/utils/text/textNormalization";
 
 describe("normalizeToTokens", () => {
   describe("basic normalization", () => {

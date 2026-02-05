@@ -12,7 +12,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { normalizeToTokens } from "@/utils/textNormalization";
+import { normalizeToTokens } from "@/utils/text/textNormalization";
 import type { OfferFingerprintInput } from "@/types";
 
 /**

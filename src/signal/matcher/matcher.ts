@@ -19,7 +19,7 @@ import type {
   MatchField,
   PhraseMatchHit,
 } from "@/types/matching";
-import { normalizeToTokens } from "@/utils/textNormalization";
+import { normalizeToTokens } from "@/utils/text/textNormalization";
 import { isNegated } from "./negation";
 
 /**

@@ -15,7 +15,7 @@ import type {
   PhraseRuntime,
 } from "@/types/catalog";
 import { validateCatalogRaw } from "@/utils/catalogValidation";
-import { normalizeToTokens } from "@/utils/textNormalization";
+import { normalizeToTokens } from "@/utils/text/textNormalization";
 import { CATALOG_PATH } from "@/constants/catalog";
 
 /**

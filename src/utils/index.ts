@@ -2,8 +2,8 @@
  * Utils barrel exports
  */
 
-export * from "./companyIdentity";
-export * from "./textNormalization";
+export * from "./identity/companyIdentity";
+export * from "./text/textNormalization";
 export * from "./catalogValidation";
-export * from "./sheetsHelpers";
-export * from "./sheetsParsing";
+export * from "./sheets/sheetsHelpers";
+export * from "./sheets/sheetsParsing";

@@ -11,7 +11,7 @@
  * - Deterministic tie-breaking: similarity → timestamp → id
  */
 
-import { normalizeToTokens } from "@/utils/textNormalization";
+import { normalizeToTokens } from "@/utils/text/textNormalization";
 import { DESC_SIM_THRESHOLD } from "@/constants/repost";
 import type { RepostCandidate, DuplicateDecision } from "@/types/repost";
 
