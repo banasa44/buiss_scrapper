@@ -13,25 +13,7 @@
  */
 
 import { TOKEN_SEPARATOR_PATTERN } from "@/constants/textNormalization";
-
-/**
- * Removes diacritics from a string using Unicode normalization.
- *
- * Uses NFD (Canonical Decomposition) to separate base characters from
- * combining diacritical marks, then removes the marks (U+0300-U+036F).
- * This approach is more comprehensive than manual mapping.
- *
- * @param text - Input text with potential diacritics
- * @returns Text with diacritics replaced by ASCII characters
- *
- * @example
- * removeDiacritics("café") // "cafe"
- * removeDiacritics("niño") // "nino"
- * removeDiacritics("José") // "Jose"
- */
-function removeDiacritics(text: string): string {
-  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-}
+import { removeDiacritics } from "@/utils/text/removeDiacritics";
 
 /**
  * Normalizes text and splits it into tokens.

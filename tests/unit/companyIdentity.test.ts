@@ -36,6 +36,10 @@ describe("normalizeCompanyName", () => {
       expect(normalizeCompanyName("Test    Company")).toBe("test company");
       expect(normalizeCompanyName("Acme  \t  Corp")).toBe("acme corp");
     });
+
+    it("should preserve names without diacritics (aside from normalization)", () => {
+      expect(normalizeCompanyName("Acme Holdings")).toBe("acme holdings");
+    });
   });
 
   describe("accent/diacritic stripping", () => {
@@ -43,6 +47,10 @@ describe("normalizeCompanyName", () => {
       expect(normalizeCompanyName("Société Générale")).toBe("societe generale");
       expect(normalizeCompanyName("Café España")).toBe("cafe espana");
       expect(normalizeCompanyName("Zürich Insurance")).toBe("zurich insurance");
+    });
+
+    it("should normalize diacritics with legal suffixes", () => {
+      expect(normalizeCompanyName("José García S.L.")).toBe("jose garcia");
     });
   });
 

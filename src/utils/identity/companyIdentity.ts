@@ -5,6 +5,8 @@
  * resolution based on the strategy defined in docs/M1/03_define_company_id.md
  */
 
+import { removeDiacritics } from "@/utils/text/removeDiacritics";
+
 /**
  * Normalize company name for deterministic identity matching
  *
@@ -28,7 +30,7 @@ export function normalizeCompanyName(raw: string): string {
 
   // Strip accents/diacritics
   // Uses NFD (canonical decomposition) + removes combining diacritical marks
-  normalized = normalized.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  normalized = removeDiacritics(normalized);
 
   // Collapse repeated whitespace to single spaces
   normalized = normalized.replace(/\s+/g, " ");

@@ -152,6 +152,12 @@ describe("normalizeToTokens", () => {
         "file",
       ]);
     });
+
+    it("should handle mixed punctuation and spacing", () => {
+      expect(
+        normalizeToTokens("  Full-Stack,  Dev (C++/Python)  "),
+      ).toEqual(["full", "stack", "dev", "c++", "python"]);
+    });
   });
 
   describe("technical tokens and edge cases", () => {
