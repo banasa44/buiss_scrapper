@@ -87,9 +87,12 @@ export const COMPANY_SHEET_SCHEMA = [
 
 /**
  * Valid resolution enum values
+ * Matches M6 lifecycle specification
  */
 export const VALID_RESOLUTIONS = [
   "PENDING",
+  "IN_PROGRESS",
+  "HIGH_INTEREST",
   "ALREADY_REVOLUT",
   "ACCEPTED",
   "REJECTED",
@@ -99,6 +102,28 @@ export const VALID_RESOLUTIONS = [
  * Default resolution for new company rows
  */
 export const DEFAULT_RESOLUTION = "PENDING";
+
+/**
+ * Resolved resolution values (trigger lifecycle actions)
+ * When a company transitions TO any of these values, offers are deleted
+ * Per M6 lifecycle specification
+ */
+export const RESOLVED_RESOLUTIONS = [
+  "ALREADY_REVOLUT",
+  "ACCEPTED",
+  "REJECTED",
+] as const;
+
+/**
+ * Active resolution values (no lifecycle actions)
+ * Informational only - company remains active
+ * Per M6 lifecycle specification
+ */
+export const ACTIVE_RESOLUTIONS = [
+  "PENDING",
+  "IN_PROGRESS",
+  "HIGH_INTEREST",
+] as const;
 
 /**
  * Number of decimal places for score formatting in sheet exports
@@ -121,3 +146,11 @@ export const SHEETS_APPEND_BATCH_SIZE = 100;
  * Smaller than append to handle individual range updates
  */
 export const SHEETS_UPDATE_BATCH_SIZE = 50;
+
+/**
+ * Feedback ingestion time window (Spain time)
+ * Per M6 decision: feedback processing runs only 03:00-06:00 Europe/Madrid
+ */
+export const FEEDBACK_WINDOW_START_HOUR = 3; // 03:00
+export const FEEDBACK_WINDOW_END_HOUR = 6; // 06:00 (exclusive)
+export const FEEDBACK_WINDOW_TIMEZONE = "Europe/Madrid";

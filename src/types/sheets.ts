@@ -6,10 +6,12 @@
 
 /**
  * Resolution values for company feedback
- * Matches the enum documented in M5 sheet schema
+ * Matches the enum documented in M6 lifecycle spec
  */
 export type CompanyResolution =
   | "PENDING"
+  | "IN_PROGRESS"
+  | "HIGH_INTEREST"
   | "ALREADY_REVOLUT"
   | "ACCEPTED"
   | "REJECTED";
@@ -93,6 +95,129 @@ export type UpdateOperation = {
   rowIndex: number;
   /** Metric column values (indices 3-9) */
   metricValues: (string | number)[];
+};
+
+/**
+ * Result of reading company feedback from sheet
+ * Contains mapping of company_id to resolution and counters
+ */
+export type CompanyFeedbackReadResult = {
+  /** Map of company_id to resolution value */
+  map: Record<number, CompanyResolution>;
+  /** Total number of rows processed (excluding header) */
+  totalRows: number;
+  /** Number of rows with valid company_id and resolution */
+  validRows: number;
+  /** Number of rows with invalid data (skipped) */
+  invalidRows: number;
+  /** Number of duplicate company_id rows (skipped) */
+  duplicateRows: number;
+};
+
+/**
+ * Single resolution change detected in feedback comparison
+ * Represents a company whose resolution differs between sheet and DB
+ */
+export type FeedbackChange = {
+  /** Company ID */
+  companyId: number;
+  /** Current resolution in DB (null if not set) */
+  fromResolution: CompanyResolution | null;
+  /** New resolution from sheet */
+  toResolution: CompanyResolution;
+};
+
+/**
+ * Result of comparing sheet feedback against DB state
+ * Deterministic plan of what needs to change (no destructive actions)
+ */
+export type FeedbackChangePlan = {
+  /** List of companies that need resolution updates */
+  changes: FeedbackChange[];
+  /** Total number of rows in sheet feedback */
+  totalSheetRows: number;
+  /** Number of companies from sheet that exist in DB */
+  knownCompanyIds: number;
+  /** Number of companies from sheet not found in DB (ignored) */
+  unknownCompanyIds: number;
+  /** Number of changes detected (sheet != DB) */
+  changesDetected: number;
+  /** Number of companies with no change (sheet == DB) */
+  unchanged: number;
+  /** Number of invalid rows passed through from reader */
+  invalidRows: number;
+};
+
+/**
+ * Classification of a feedback change based on lifecycle impact
+ * Categorizes transitions according to M6 resolution semantics
+ */
+export type ValidatedFeedbackChange = FeedbackChange & {
+  /** Classification of this change's lifecycle impact */
+  classification:
+    | "destructive" // Transition TO resolved (ACCEPTED/REJECTED/ALREADY_REVOLUT)
+    | "reversal" // Transition FROM resolved back to active
+    | "informational"; // Transition between active states only
+};
+
+/**
+ * Result of validating feedback changes for lifecycle processing
+ * Classifies changes by their lifecycle impact (destructive/reversal/informational)
+ */
+export type ValidatedFeedbackPlan = {
+  /** Changes requiring offer deletion (transitions TO resolved states) */
+  destructiveChanges: ValidatedFeedbackChange[];
+  /** Changes requiring offer restoration (transitions FROM resolved to active) */
+  reversalChanges: ValidatedFeedbackChange[];
+  /** Changes with no lifecycle impact (active ↔ active) */
+  informationalChanges: ValidatedFeedbackChange[];
+  /** Total number of changes validated */
+  totalChanges: number;
+  /** Number of destructive transitions */
+  destructiveCount: number;
+  /** Number of reversal transitions */
+  reversalCount: number;
+  /** Number of informational transitions */
+  informationalCount: number;
+};
+
+/**
+ * Result of checking if current time is within feedback processing window
+ * Used to gate destructive feedback operations (M6 nightly window)
+ */
+export type FeedbackWindowCheck = {
+  /** Whether feedback processing is allowed at this time */
+  allowed: boolean;
+  /** Human-readable explanation of the decision */
+  reason: string;
+  /** Current hour in target timezone (for debugging) */
+  currentHour?: number;
+  /** Target timezone used for check */
+  timezone?: string;
+};
+
+/**
+ * Result of processing feedback from Google Sheets
+ * Orchestrates BUILD-1 through BUILD-4 (read, compare, validate, gate)
+ *
+ * This is a read-only operation that produces a validated plan.
+ * No DB modifications are performed at this stage.
+ */
+export type ProcessFeedbackResult = {
+  /** Whether the operation succeeded overall */
+  ok: boolean;
+  /** Whether feedback processing was skipped (window gate blocked) */
+  skipped: boolean;
+  /** Reason for skip or error (if applicable) */
+  reason?: string;
+  /** Complete result from feedback reader (BUILD-1) */
+  feedbackReadResult?: CompanyFeedbackReadResult;
+  /** Complete change plan from comparison (BUILD-2) */
+  changePlan?: FeedbackChangePlan;
+  /** Validated feedback plan with classifications (BUILD-3) */
+  validatedPlan?: ValidatedFeedbackPlan;
+  /** Error message if operation failed */
+  error?: string;
 };
 
 /**
