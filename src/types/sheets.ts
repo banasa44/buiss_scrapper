@@ -51,3 +51,46 @@ export type ExportPlan = {
   /** Array of rows (each row is an array of cell values) ready for Sheets API append */
   rowsForAppend: (string | number)[][];
 };
+
+/**
+ * Result of appending new companies to sheet
+ */
+export type AppendCompaniesResult = {
+  /** Whether the operation succeeded overall */
+  ok: boolean;
+  /** Number of companies appended to sheet */
+  appendedCount: number;
+  /** Number of companies skipped (already in sheet) */
+  skippedCount: number;
+  /** Total number of companies in DB */
+  totalCompanies: number;
+  /** Error message if operation failed */
+  error?: string;
+};
+
+/**
+ * Result of updating company metrics in sheet
+ */
+export type UpdateCompaniesResult = {
+  /** Whether the operation succeeded overall */
+  ok: boolean;
+  /** Number of companies updated in sheet */
+  updatedCount: number;
+  /** Number of companies skipped (not in sheet) */
+  skippedCount: number;
+  /** Total number of companies in DB */
+  totalCompanies: number;
+  /** Error message if operation failed */
+  error?: string;
+};
+
+/**
+ * Update operation for a single company row
+ * Contains row index and metric values for batch updates
+ */
+export type UpdateOperation = {
+  /** 1-based row index in the sheet */
+  rowIndex: number;
+  /** Metric column values (indices 3-9) */
+  metricValues: (string | number)[];
+};

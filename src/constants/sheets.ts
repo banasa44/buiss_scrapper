@@ -56,6 +56,23 @@ export const COMPANY_SHEET_COL_INDEX_COMPANY_ID = 0;
  */
 export const COMPANY_SHEET_COL_INDEX_RESOLUTION = 1;
 
+/**
+ * First metric column index (0-based)
+ * Metrics start after: company_id, company_name, resolution
+ */
+export const COMPANY_SHEET_FIRST_METRIC_COL_INDEX = 3;
+
+/**
+ * Last metric column index (0-based)
+ * Corresponds to last_strong_at (column J, index 9)
+ */
+export const COMPANY_SHEET_LAST_METRIC_COL_INDEX = 9;
+
+/**
+ * Number of metric columns to update (columns 4-10 in 1-based, indices 3-9)
+ */
+export const COMPANY_SHEET_METRIC_COL_COUNT = 7;
+
 // --- Schema Contract ---
 
 /**
@@ -92,3 +109,15 @@ export const SCORE_DECIMAL_PLACES = 1;
  * Placeholder text for companies with missing display name
  */
 export const NO_NAME_PLACEHOLDER = "(no name)";
+
+/**
+ * Batch size for appending rows to Google Sheets
+ * Balances API efficiency with request size limits
+ */
+export const SHEETS_APPEND_BATCH_SIZE = 100;
+
+/**
+ * Batch size for updating existing rows in Google Sheets
+ * Smaller than append to handle individual range updates
+ */
+export const SHEETS_UPDATE_BATCH_SIZE = 50;
