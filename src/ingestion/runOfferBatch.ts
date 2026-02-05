@@ -18,6 +18,10 @@ import type {
 import { withRun } from "./runLifecycle";
 import { ingestOffers } from "./ingestOffers";
 import { aggregateCompaniesAndPersist } from "./aggregateCompanies";
+import { syncCompaniesToSheet } from "@/sheets";
+import { GoogleSheetsClient } from "@/clients/googleSheets";
+import { GOOGLE_SHEETS_SPREADSHEET_ID_ENV } from "@/constants/clients/googleSheets";
+import { loadCatalog } from "@/catalog";
 import * as logger from "@/logger";
 
 /**
@@ -67,6 +71,35 @@ export async function runOfferBatchIngestion(
     // Update accumulator with aggregation results
     acc.counters.companies_aggregated = aggregationResult.ok;
     acc.counters.companies_failed = aggregationResult.failed;
+
+    // Sync companies to Sheets (best-effort, don't fail run if Sheets unavailable)
+    const spreadsheetId = process.env[GOOGLE_SHEETS_SPREADSHEET_ID_ENV];
+    if (spreadsheetId) {
+      try {
+        const sheetsClient = new GoogleSheetsClient({ spreadsheetId });
+        const catalog = loadCatalog();
+        const sheetsResult = await syncCompaniesToSheet(sheetsClient, catalog);
+
+        if (sheetsResult.ok) {
+          logger.info("Sheets sync completed", {
+            appendedCount: sheetsResult.appendedCount,
+            updatedCount: sheetsResult.updatedCount,
+            skippedCount: sheetsResult.skippedCount,
+          });
+        } else {
+          logger.warn("Sheets sync completed with errors", {
+            appendedCount: sheetsResult.appendedCount,
+            updatedCount: sheetsResult.updatedCount,
+            skippedCount: sheetsResult.skippedCount,
+            errors: sheetsResult.errors,
+          });
+        }
+      } catch (err) {
+        logger.warn("Sheets sync failed (non-fatal)", {
+          error: String(err),
+        });
+      }
+    }
 
     // Capture counters snapshot before withRun finalizes
     capturedCounters = { ...acc.counters };

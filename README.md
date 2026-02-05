@@ -55,3 +55,11 @@ The project uses `@/` as an alias for `src/` to enable clean imports:
 ```typescript
 import { InfoJobsClient } from "@/clients/infojobs";
 ```
+
+## Environment Variables
+
+### Optional
+
+- `GOOGLE_SHEETS_SPREADSHEET_ID` - Target spreadsheet ID for company export. If not set, Sheets sync is skipped during ingestion runs.
+- `GOOGLE_SERVICE_ACCOUNT_EMAIL` - Service account email for Google Sheets authentication
+- `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` - Service account private key (PEM format)

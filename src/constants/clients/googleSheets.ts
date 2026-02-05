@@ -49,6 +49,12 @@ export const GOOGLE_SHEETS_DEFAULT_MAX_DELAY_MS = 10000;
 export const GOOGLE_SHEETS_DEFAULT_TIMEOUT_MS = 30000;
 
 /**
+ * Environment variable name for target spreadsheet ID
+ * If not set, Sheets sync will be skipped during ingestion runs
+ */
+export const GOOGLE_SHEETS_SPREADSHEET_ID_ENV = "GOOGLE_SHEETS_SPREADSHEET_ID";
+
+/**
  * JWT expiration time in seconds (1 hour)
  * Google's OAuth2 JWT tokens are valid for 1 hour
  */
