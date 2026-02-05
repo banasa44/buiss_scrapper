@@ -94,3 +94,21 @@ export type UpdateOperation = {
   /** Metric column values (indices 3-9) */
   metricValues: (string | number)[];
 };
+
+/**
+ * Combined result of syncing companies to sheet (append + update)
+ */
+export type SyncCompaniesResult = {
+  /** Whether both operations succeeded */
+  ok: boolean;
+  /** Total number of companies in DB */
+  totalCompanies: number;
+  /** Number of new companies appended */
+  appendedCount: number;
+  /** Number of existing companies updated */
+  updatedCount: number;
+  /** Number of companies skipped (neither appended nor updated) */
+  skippedCount: number;
+  /** Error messages if any operation failed */
+  errors?: string[];
+};
