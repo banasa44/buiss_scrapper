@@ -5,3 +5,5 @@
 export * from "./companyIdentity";
 export * from "./textNormalization";
 export * from "./catalogValidation";
+export * from "./sheetsHelpers";
+export * from "./sheetsParsing";

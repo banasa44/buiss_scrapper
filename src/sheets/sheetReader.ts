@@ -12,48 +12,14 @@ import type {
   CompanySheetRow,
   SheetCompanyIndex,
   ReadCompanySheetResult,
-  CompanyResolution,
 } from "@/types";
 import {
   COMPANY_SHEET_READ_RANGE,
   COMPANY_SHEET_COL_INDEX_COMPANY_ID,
   COMPANY_SHEET_COL_INDEX_RESOLUTION,
-  VALID_RESOLUTIONS,
 } from "@/constants";
+import { parseCompanyId, parseResolution } from "@/utils";
 import * as logger from "@/logger";
-
-/**
- * Parse a company_id value from sheet cell
- * Returns null if invalid
- */
-function parseCompanyId(value: unknown): number | null {
-  if (typeof value === "number") {
-    return Number.isInteger(value) && value > 0 ? value : null;
-  }
-  if (typeof value === "string") {
-    const parsed = parseInt(value, 10);
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-  }
-  return null;
-}
-
-/**
- * Parse a resolution value from sheet cell
- * Returns null if invalid or empty
- */
-function parseResolution(value: unknown): CompanyResolution | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-  const trimmed = value.trim().toUpperCase();
-  if (trimmed === "") {
-    return null;
-  }
-  if (VALID_RESOLUTIONS.includes(trimmed as CompanyResolution)) {
-    return trimmed as CompanyResolution;
-  }
-  return null;
-}
 
 /**
  * Read company sheet and build an index

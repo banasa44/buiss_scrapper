@@ -14,21 +14,9 @@ import type {
 import { listAllCompanies } from "@/db";
 import { readCompanySheet } from "./sheetReader";
 import { mapCompanyToSheetRow } from "./companyRowMapper";
-import {
-  COMPANY_SHEET_NAME,
-  COMPANY_SHEET_FIRST_METRIC_COL_INDEX,
-  COMPANY_SHEET_LAST_METRIC_COL_INDEX,
-  SHEETS_UPDATE_BATCH_SIZE,
-} from "@/constants";
+import { extractMetricSlice, buildMetricUpdateRange } from "@/utils";
+import { SHEETS_UPDATE_BATCH_SIZE } from "@/constants";
 import { info, warn, error } from "@/logger";
-
-/**
- * Convert 0-based column index to A1 notation letter
- * Supports columns A-Z (indices 0-25)
- */
-function colIndexToLetter(index: number): string {
-  return String.fromCharCode(65 + index); // 65 is 'A'
-}
 
 /**
  * Update metrics for existing companies in sheet
@@ -101,10 +89,7 @@ export async function updateCompanyMetricsInSheet(
     try {
       const fullRow = mapCompanyToSheetRow(company, catalog);
       // Extract metric columns only (indices 3-9)
-      const metricValues = fullRow.slice(
-        COMPANY_SHEET_FIRST_METRIC_COL_INDEX,
-        COMPANY_SHEET_LAST_METRIC_COL_INDEX + 1,
-      );
+      const metricValues = extractMetricSlice(fullRow);
 
       updateOps.push({
         rowIndex: sheetRow.rowIndex,
@@ -135,8 +120,6 @@ export async function updateCompanyMetricsInSheet(
   }
 
   // Step 5: Update in batches
-  const firstMetricCol = colIndexToLetter(COMPANY_SHEET_FIRST_METRIC_COL_INDEX);
-  const lastMetricCol = colIndexToLetter(COMPANY_SHEET_LAST_METRIC_COL_INDEX);
   let updatedCount = 0;
 
   for (let i = 0; i < updateOps.length; i += SHEETS_UPDATE_BATCH_SIZE) {
@@ -152,7 +135,7 @@ export async function updateCompanyMetricsInSheet(
 
     // Update each row individually (batchUpdate expects contiguous range)
     for (const op of batch) {
-      const range = `${COMPANY_SHEET_NAME}!${firstMetricCol}${op.rowIndex}:${lastMetricCol}${op.rowIndex}`;
+      const range = buildMetricUpdateRange(op.rowIndex);
       const values = [op.metricValues]; // Single row
 
       const updateResult = await client.batchUpdate(values, range);
