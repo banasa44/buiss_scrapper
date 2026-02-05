@@ -43,3 +43,11 @@ export type ReadCompanySheetResult = {
   /** Number of rows skipped due to parse errors */
   skippedRows: number;
 };
+
+/**
+ * Export plan containing rows ready for append to sheet
+ */
+export type ExportPlan = {
+  /** Array of rows (each row is an array of cell values) ready for Sheets API append */
+  rowsForAppend: (string | number)[][];
+};

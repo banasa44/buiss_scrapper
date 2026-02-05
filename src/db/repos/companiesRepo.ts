@@ -347,3 +347,33 @@ export function updateCompanyAggregation(
   }
   return updated;
 }
+
+/**
+ * List all companies with optional pagination
+ *
+ * Default ordering: id ASC (deterministic, chronological insertion order)
+ * No filtering applied - returns all companies in the database.
+ *
+ * @param options - Optional pagination parameters
+ * @param options.limit - Maximum number of companies to return
+ * @param options.offset - Number of companies to skip
+ * @returns Array of companies
+ */
+export function listAllCompanies(options?: {
+  limit?: number;
+  offset?: number;
+}): Company[] {
+  const db = getDb();
+
+  let sql = "SELECT * FROM companies ORDER BY id ASC";
+
+  // Apply pagination if provided
+  if (options?.limit !== undefined) {
+    sql += ` LIMIT ${options.limit}`;
+  }
+  if (options?.offset !== undefined) {
+    sql += ` OFFSET ${options.offset}`;
+  }
+
+  return db.prepare(sql).all() as Company[];
+}
