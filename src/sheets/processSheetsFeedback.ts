@@ -51,13 +51,7 @@ export async function processSheetsFeedback(
 
   if (!windowCheck.allowed) {
     // Window blocked - skip feedback processing (not an error)
-    logger.info("Feedback processing skipped", {
-      reason: windowCheck.reason,
-      currentHour: windowCheck.currentHour,
-      timezone: windowCheck.timezone,
-      skipped: true,
-    });
-
+    // Note: Final audit logging done in runOfferBatch.ts (BUILD-11)
     return {
       ok: true,
       skipped: true,
@@ -75,25 +69,7 @@ export async function processSheetsFeedback(
     // Step 4: Validate and classify transitions
     const validatedPlan = validateFeedbackChangePlan(changePlan);
 
-    // Emit single structured summary log
-    logger.info("Feedback processing complete", {
-      skipped: false,
-      // Reader stats
-      totalSheetRows: feedbackReadResult.totalRows,
-      validRows: feedbackReadResult.validRows,
-      invalidRows: feedbackReadResult.invalidRows,
-      duplicateRows: feedbackReadResult.duplicateRows,
-      // Plan stats
-      knownCompanyIds: changePlan.knownCompanyIds,
-      unknownCompanyIds: changePlan.unknownCompanyIds,
-      changesDetected: changePlan.changesDetected,
-      unchanged: changePlan.unchanged,
-      // Validation stats
-      totalChanges: validatedPlan.totalChanges,
-      destructiveCount: validatedPlan.destructiveCount,
-      reversalCount: validatedPlan.reversalCount,
-      informationalCount: validatedPlan.informationalCount,
-    });
+    // Note: Final audit logging done in runOfferBatch.ts (BUILD-11)
 
     return {
       ok: true,

@@ -380,6 +380,10 @@ export function updateCompanyResolution(
   }
 
   // Update resolution (idempotent - no-op if already set)
+  // M6.BUILD-10 GUARANTEE: This UPDATE touches ONLY resolution and updated_at.
+  // Metric columns (max_score, offer_count, unique_offer_count, strong_offer_count,
+  // avg_strong_score, top_category_id, top_offer_id, category_max_scores, last_strong_at)
+  // are explicitly excluded to preserve historical aggregates.
   const result = db
     .prepare(
       `

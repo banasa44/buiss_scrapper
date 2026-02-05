@@ -414,6 +414,10 @@ export function listCanonicalOffersForRepost(
  * Used when a company transitions to a resolved state (ACCEPTED/REJECTED/ALREADY_REVOLUT).
  * Per M6 specification: company row and metrics are preserved, only offers are deleted.
  *
+ * M6.BUILD-10 GUARANTEE: This function NEVER updates the companies table.
+ * All company metrics (max_score, offer_count, etc.) remain unchanged.
+ * Only offers and matches rows are deleted.
+ *
  * @param companyId - Company ID to delete offers for
  * @returns Number of offers deleted
  */

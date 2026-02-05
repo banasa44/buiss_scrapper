@@ -114,27 +114,65 @@ export async function runOfferBatchIngestion(
               feedbackResult.validatedPlan,
             );
 
-            logger.info("Feedback loop completed", {
+            // M6.BUILD-11: Comprehensive feedback audit log
+            // Compute resolution breakdown for audit trail
+            const byToResolution: Record<string, number> = {};
+            for (const change of [
+              ...feedbackResult.validatedPlan.destructiveChanges,
+              ...feedbackResult.validatedPlan.reversalChanges,
+              ...feedbackResult.validatedPlan.informationalChanges,
+            ]) {
+              byToResolution[change.toResolution] =
+                (byToResolution[change.toResolution] || 0) + 1;
+            }
+
+            logger.info("Feedback audit", {
+              window: {
+                skipped: false,
+              },
+              sheetRead: {
+                totalRows: feedbackResult.feedbackReadResult!.totalRows,
+                validRows: feedbackResult.feedbackReadResult!.validRows,
+                invalidRows: feedbackResult.feedbackReadResult!.invalidRows,
+                duplicateRows: feedbackResult.feedbackReadResult!.duplicateRows,
+              },
+              diff: {
+                knownCompanyIds: feedbackResult.changePlan!.knownCompanyIds,
+                unknownCompanyIds: feedbackResult.changePlan!.unknownCompanyIds,
+                changesDetected: feedbackResult.changePlan!.changesDetected,
+                unchanged: feedbackResult.changePlan!.unchanged,
+              },
+              validation: {
+                destructiveCount: feedbackResult.validatedPlan.destructiveCount,
+                reversalCount: feedbackResult.validatedPlan.reversalCount,
+                informationalCount:
+                  feedbackResult.validatedPlan.informationalCount,
+              },
               resolutionUpdates: {
                 attempted: applyResult.attempted,
                 updated: applyResult.updated,
-                failed: applyResult.failed,
                 skipped: applyResult.skipped,
+                failed: applyResult.failed,
+                byToResolution,
               },
               offerDeletions: {
-                attempted: applyResult.offerDeletionAttempted,
-                deleted: applyResult.offersDeleted,
-                failed: applyResult.offerDeletionsFailed,
+                attemptedCompanies: applyResult.offerDeletionAttempted,
+                deletedOffersTotal: applyResult.offersDeleted,
+                failedCompanies: applyResult.offerDeletionsFailed,
               },
-              changeClassification: {
-                destructive: feedbackResult.validatedPlan.destructiveCount,
-                reversal: feedbackResult.validatedPlan.reversalCount,
-                informational: feedbackResult.validatedPlan.informationalCount,
+              ignored: {
+                unknownCompanyIds: feedbackResult.changePlan!.unknownCompanyIds,
+                invalidRows: feedbackResult.feedbackReadResult!.invalidRows,
               },
             });
           } else if (feedbackResult.skipped) {
-            // Window gate blocked - already logged by processSheetsFeedback
-            // No additional logging needed
+            // Window gate blocked - emit skip audit log
+            logger.info("Feedback audit", {
+              window: {
+                skipped: true,
+                reason: feedbackResult.reason,
+              },
+            });
           } else {
             // Error occurred - already logged by processSheetsFeedback
             logger.warn("Feedback loop skipped due to processing error", {

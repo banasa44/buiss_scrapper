@@ -29,6 +29,12 @@ import * as logger from "@/logger";
  * Per M6 specification: when a company transitions to RESOLVED state,
  * all offers for that company are immediately deleted (matches cascade).
  *
+ * M6.BUILD-10 METRICS PRESERVATION GUARANTEE:
+ * This function NEVER modifies company metrics or aggregates. Only operations:
+ * - updateCompanyResolution(): touches ONLY companies.resolution (+ updated_at)
+ * - deleteOffersByCompanyId(): removes offers/matches, does NOT update companies table
+ * All historical metrics (max_score, offer_count, category_max_scores, etc.) are preserved.
+ *
  * @param plan - Validated feedback plan from validateFeedbackChangePlan()
  * @returns Structured result with counters
  */
@@ -107,19 +113,15 @@ export function applyValidatedFeedbackPlanToDb(
     }
   }
 
-  // Single summary log at end
-  logger.info("Feedback changes persisted to DB", {
-    attempted: result.attempted,
-    updated: result.updated,
-    failed: result.failed,
-    skipped: result.skipped,
-    destructiveCount: plan.destructiveCount,
-    reversalCount: plan.reversalCount,
-    informationalCount: plan.informationalCount,
-    offerDeletionAttempted: result.offerDeletionAttempted,
-    offersDeleted: result.offersDeleted,
-    offerDeletionsFailed: result.offerDeletionsFailed,
-  });
+  // TODO M6.BUILD-11: Add detailed audit logging for:
+  //   - Companies resolved (with resolution type breakdown)
+  //   - Companies reverted to PENDING
+  //   - Deletions performed (offer counts per company)
+  //   - Ignored rows (invalid/unknown company IDs)
+  //   - Structured counters for observability
+
+  // Note: Final audit logging done in runOfferBatch.ts per BUILD-11
+  // (comprehensive feedback section log with all counters)
 
   return result;
 }
