@@ -32,6 +32,7 @@ function createTestCompany(overrides: Partial<Company> = {}): Company {
     top_offer_id: null,
     category_max_scores: null,
     last_strong_at: null,
+    resolution: "PENDING",
     ...overrides,
   };
 }

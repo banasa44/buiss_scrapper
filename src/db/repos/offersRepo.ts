@@ -404,3 +404,25 @@ export function listCanonicalOffersForRepost(
 
   return rows;
 }
+
+/**
+ * Delete all offers for a company (M6 resolution lifecycle)
+ *
+ * Removes all offers associated with a resolved company.
+ * Matches are automatically deleted via ON DELETE CASCADE FK constraint.
+ *
+ * Used when a company transitions to a resolved state (ACCEPTED/REJECTED/ALREADY_REVOLUT).
+ * Per M6 specification: company row and metrics are preserved, only offers are deleted.
+ *
+ * @param companyId - Company ID to delete offers for
+ * @returns Number of offers deleted
+ */
+export function deleteOffersByCompanyId(companyId: number): number {
+  const db = getDb();
+
+  const result = db
+    .prepare("DELETE FROM offers WHERE company_id = ?")
+    .run(companyId);
+
+  return result.changes;
+}

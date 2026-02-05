@@ -116,6 +116,17 @@ export function ingestOffers(input: IngestOffersInput): IngestOffersResult {
         provider,
         offerId: offer.ref.id,
       });
+    } else if (result.reason === "company_resolved") {
+      // M6: company is resolved, skip offer ingestion
+      skipped++;
+      if (acc) {
+        acc.counters.offers_skipped = (acc.counters.offers_skipped ?? 0) + 1;
+      }
+      // Track affected company (company state matters for aggregation)
+      if (affectedCompanyIds) {
+        affectedCompanyIds.add(result.companyId);
+      }
+      // Note: persistOffer already logs the skip at debug level
     } else if (result.reason === "db_error") {
       failed++;
       if (acc) {

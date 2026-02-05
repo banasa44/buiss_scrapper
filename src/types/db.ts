@@ -2,8 +2,10 @@
  * Database type definitions
  *
  * Types for database entities and repository interfaces.
- * Aligned with schema in migrations/0003_company_aggregation_signals.sql
+ * Aligned with schema in migrations/0006_add_company_resolution.sql
  */
+
+import type { CompanyResolution } from "./sheets";
 
 /**
  * Company entity (global, no provider column)
@@ -13,6 +15,9 @@
  * - Core metrics: max_score, offer_count, unique_offer_count, strong_offer_count, avg_strong_score
  * - Evidence: top_category_id, top_offer_id, category_max_scores (JSON)
  * - Freshness: last_strong_at
+ *
+ * Includes M6 feedback lifecycle:
+ * - resolution: client decision from Google Sheets (PENDING by default)
  */
 export type Company = {
   id: number;
@@ -33,6 +38,8 @@ export type Company = {
   top_offer_id: number | null;
   category_max_scores: string | null; // JSON: { [categoryId]: maxScore }
   last_strong_at: string | null;
+  // M6 feedback lifecycle
+  resolution: CompanyResolution;
 };
 
 /**

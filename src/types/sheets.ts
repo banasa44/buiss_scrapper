@@ -237,3 +237,24 @@ export type SyncCompaniesResult = {
   /** Error messages if any operation failed */
   errors?: string[];
 };
+
+/**
+ * Result of applying validated feedback plan to database
+ * Persists resolution changes with best-effort error handling
+ */
+export type ApplyFeedbackResult = {
+  /** Total number of companies attempted to update */
+  attempted: number;
+  /** Number of companies successfully updated */
+  updated: number;
+  /** Number of companies that failed to update (logged as warnings) */
+  failed: number;
+  /** Number of companies skipped (no actual change needed - idempotent) */
+  skipped: number;
+  /** Number of companies where offer deletion was attempted (destructive changes only) */
+  offerDeletionAttempted: number;
+  /** Total number of offers deleted across all companies */
+  offersDeleted: number;
+  /** Number of companies where offer deletion failed (logged as warnings) */
+  offerDeletionsFailed: number;
+};

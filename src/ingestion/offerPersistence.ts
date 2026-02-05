@@ -30,11 +30,13 @@ import {
   listCanonicalOffersForRepost,
   findCanonicalOffersByFingerprint,
   incrementOfferRepostCount,
+  getCompanyById,
 } from "@/db";
 import {
   detectRepostDuplicate,
   computeOfferFingerprint,
 } from "@/signal/repost";
+import { RESOLVED_RESOLUTIONS } from "@/constants";
 import { persistCompanyAndSource } from "./companyPersistence";
 import * as logger from "@/logger";
 
@@ -145,6 +147,23 @@ export function persistOffer(input: PersistOfferInput): OfferPersistResult {
   }
 
   const { companyId } = companyResult;
+
+  // Step 1.5: M6 ingestion protection - skip offers for resolved companies
+  // If company is resolved (ACCEPTED/REJECTED/ALREADY_REVOLUT), do not ingest offers
+  const company = getCompanyById(companyId);
+  if (
+    company &&
+    (RESOLVED_RESOLUTIONS as readonly string[]).includes(company.resolution)
+  ) {
+    logger.debug("Offer skipped: company is resolved", {
+      provider,
+      offerId: offer.ref.id,
+      companyId,
+      companyName: offer.company.name,
+      resolution: company.resolution,
+    });
+    return { ok: false, reason: "company_resolved", companyId };
+  }
 
   // Step 2: Compute effective seen timestamp
   const effectiveSeenAt = computeEffectiveSeenAt(offer);

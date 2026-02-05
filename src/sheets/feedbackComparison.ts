@@ -19,12 +19,7 @@ import * as logger from "@/logger";
 /**
  * Load current company resolutions from database
  *
- * Returns a map of company_id -> resolution (or null if not set).
- *
- * Note: Until BUILD-6 adds the resolution field to the companies table,
- * this will return an empty resolution (null) for all companies.
- * The comparison logic will still work correctly - it will treat all
- * sheet resolutions as "changes" until the DB field is added.
+ * Returns a map of company_id -> resolution.
  *
  * @returns Map of company_id to current resolution
  */
@@ -33,14 +28,7 @@ function loadCompanyResolutionsFromDb(): Map<number, CompanyResolution | null> {
   const resolutionMap = new Map<number, CompanyResolution | null>();
 
   for (const company of companies) {
-    // TODO: Once BUILD-6 adds the resolution field to companies table,
-    // read it here. For now, all companies have null resolution.
-    // Safe casting: the field doesn't exist yet, so it will be undefined
-    const resolution = (company as any).resolution as
-      | CompanyResolution
-      | null
-      | undefined;
-    resolutionMap.set(company.id, resolution ?? null);
+    resolutionMap.set(company.id, company.resolution);
   }
 
   logger.debug("Loaded company resolutions from DB", {

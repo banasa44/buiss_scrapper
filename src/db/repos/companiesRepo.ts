@@ -12,6 +12,7 @@ import type {
   CompanySourceInput,
   CompanyAggregationInput,
 } from "@/types";
+import type { CompanyResolution } from "@/types";
 import { getDb } from "@/db";
 import { warn } from "@/logger";
 
@@ -346,6 +347,50 @@ export function updateCompanyAggregation(
     );
   }
   return updated;
+}
+
+/**
+ * Update company resolution (M6 feedback lifecycle)
+ *
+ * Updates the resolution field for a company based on client feedback from Google Sheets.
+ * Idempotent: no-op if the resolution is already set to the target value.
+ *
+ * Per M6 lifecycle specification, this field controls:
+ * - Whether offers should be deleted (when resolved)
+ * - Whether new offers should be ingested (blocked if resolved)
+ * - Company lifecycle state (active vs resolved)
+ *
+ * @param companyId - Company ID to update
+ * @param resolution - New resolution value from feedback
+ * @returns Number of rows updated (0 if already set, 1 if changed)
+ * @throws Error if company does not exist
+ */
+export function updateCompanyResolution(
+  companyId: number,
+  resolution: CompanyResolution,
+): number {
+  const db = getDb();
+
+  // Verify company exists
+  const existing = getCompanyById(companyId);
+  if (!existing) {
+    throw new Error(
+      `Cannot update resolution: company id ${companyId} does not exist`,
+    );
+  }
+
+  // Update resolution (idempotent - no-op if already set)
+  const result = db
+    .prepare(
+      `
+    UPDATE companies
+    SET resolution = ?, updated_at = datetime('now')
+    WHERE id = ? AND resolution != ?
+  `,
+    )
+    .run(resolution, companyId, resolution);
+
+  return result.changes;
 }
 
 /**
