@@ -138,17 +138,41 @@ Goal: allow the client to resolve companies from Google Sheets and propagate tho
 
 ## M7 — Operationalization (state + scheduling) + runbook
 
-Goal: make it hands-off to run daily with stable behavior.
+Goal: make the system fully hands-off, sequential, and safe to run continuously.
 
-- [DECISION] Define per-query concept + state schema + state machine
-- [BUILD] Implement per-query run state persistence
-- [BUILD] Implement single-run lock (no overlap)
+### Phase 1 – Foundations (concepts and persistence)
+
+- [DECISION] Finalize per-query concept, state schema, and state machine
+- [BUILD] Introduce query registry (source of truth for queries)
+- [BUILD] Implement `query_state` persistence (migration + repo)
+
+### Phase 2 – Safety and Control
+
+- [BUILD] Implement single-run global lock (no overlap)
+- [BUILD] Attach `queryKey` to existing `ingestion_runs` records
+- [BUILD] Basic query lifecycle transitions (IDLE → RUNNING → SUCCESS/ERROR)
+
+### Phase 3 – Orchestration Core
+
 - [DECISION] Choose scheduler cadence (+ jitter) and retry policy
-- [BUILD] Implement runner core (manual + scheduled share codepath)
-- [BUILD] Implement scheduling wrapper (cron/node-schedule/systemd—el que toqui)
-- [BUILD] Run summary logging + persist run stats
-- [DOC] .env.example + README config
-- [DOC] Runbook + troubleshooting + “reset/resume” guidance
+- [BUILD] Implement runner core that executes all queries sequentially
+  - shared codepath for manual and scheduled execution
+- [BUILD] Implement per-query retry handling and rate-limit pauses
+
+### Phase 4 – Scheduling
+
+- [BUILD] Implement scheduling wrapper (cron / loop-based daemon)
+- [BUILD] Nightly gating for Google Sheets operations
+
+### Phase 5 – Observability
+
+- [BUILD] Run summary logging enriched with query context
+- [BUILD] Persist run statistics aligned with `query_state`
+
+### Phase 6 – Documentation
+
+- [DOC] `.env.example` and README configuration section
+- [DOC] Operational runbook + troubleshooting guide
 
 ---
 
