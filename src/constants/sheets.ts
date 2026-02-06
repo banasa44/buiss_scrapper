@@ -32,58 +32,117 @@ export const COMPANY_SHEET_READ_RANGE = `${COMPANY_SHEET_NAME}!A:Z`;
  */
 export const COMPANY_SHEET_HEADER_RANGE = `${COMPANY_SHEET_NAME}!A${COMPANY_SHEET_HEADER_ROW}:Z${COMPANY_SHEET_HEADER_ROW}`;
 
-// --- Column Names (Minimal Schema) ---
+// --- Column Schema Contract (Single Source of Truth) ---
 
 /**
- * Column name for company_id (primary key)
+ * Complete column definition for the Companies sheet
+ *
+ * This is the SINGLE SOURCE OF TRUTH for the sheet layout.
+ * All column indices, headers, and properties are derived from this constant.
+ *
+ * Schema order (10 columns A-J):
+ * Per BUILD-3B1 and AUDIT_04 specifications
+ *
+ * Headers are in Spanish for commercial-facing sheets.
+ * Only resolution is editable by humans (client feedback column).
  */
-export const COMPANY_SHEET_COL_NAME_COMPANY_ID = "company_id";
+export const COMPANY_SHEET_COLUMNS = [
+  {
+    id: "company_id",
+    header: "ID Empresa",
+    isEditableByHuman: false,
+  },
+  {
+    id: "company_name",
+    header: "Empresa",
+    isEditableByHuman: false, // System writes once, never overwrites
+  },
+  {
+    id: "resolution",
+    header: "Resolución",
+    isEditableByHuman: true, // Client feedback column - only editable field
+  },
+  {
+    id: "max_score",
+    header: "Score máx.",
+    isEditableByHuman: false,
+  },
+  {
+    id: "strong_offers",
+    header: "Ofertas fuertes",
+    isEditableByHuman: false,
+  },
+  {
+    id: "unique_offers",
+    header: "Ofertas únicas",
+    isEditableByHuman: false,
+  },
+  {
+    id: "posting_activity",
+    header: "Actividad publicaciones",
+    isEditableByHuman: false,
+  },
+  {
+    id: "avg_strong_score",
+    header: "Score fuerte medio",
+    isEditableByHuman: false,
+  },
+  {
+    id: "top_category",
+    header: "Categoría top",
+    isEditableByHuman: false,
+  },
+  {
+    id: "last_strong_at",
+    header: "Última señal fuerte",
+    isEditableByHuman: false,
+  },
+] as const;
 
 /**
- * Column name for resolution (client feedback)
+ * Column ID type derived from the contract
  */
-export const COMPANY_SHEET_COL_NAME_RESOLUTION = "resolution";
-
-// --- Column Indices (0-based) ---
+export type CompanySheetColumnId = (typeof COMPANY_SHEET_COLUMNS)[number]["id"];
 
 /**
- * Column index for company_id (0-based)
+ * Array of column headers for sheet operations
+ * Derived from COMPANY_SHEET_COLUMNS
  */
-export const COMPANY_SHEET_COL_INDEX_COMPANY_ID = 0;
+export const COMPANY_SHEET_HEADERS: string[] = COMPANY_SHEET_COLUMNS.map(
+  (col) => col.header,
+);
 
 /**
- * Column index for resolution (0-based)
+ * Map of column IDs to 0-based indices
+ * Derived from COMPANY_SHEET_COLUMNS
  */
-export const COMPANY_SHEET_COL_INDEX_RESOLUTION = 1;
+export const COMPANY_SHEET_COL_INDEX: Record<CompanySheetColumnId, number> =
+  COMPANY_SHEET_COLUMNS.reduce(
+    (acc, col, index) => {
+      acc[col.id] = index;
+      return acc;
+    },
+    {} as Record<CompanySheetColumnId, number>,
+  );
 
 /**
  * First metric column index (0-based)
  * Metrics start after: company_id, company_name, resolution
  */
-export const COMPANY_SHEET_FIRST_METRIC_COL_INDEX = 3;
+export const COMPANY_SHEET_FIRST_METRIC_COL_INDEX =
+  COMPANY_SHEET_COL_INDEX.max_score;
 
 /**
  * Last metric column index (0-based)
  * Corresponds to last_strong_at (column J, index 9)
  */
-export const COMPANY_SHEET_LAST_METRIC_COL_INDEX = 9;
+export const COMPANY_SHEET_LAST_METRIC_COL_INDEX =
+  COMPANY_SHEET_COL_INDEX.last_strong_at;
 
 /**
  * Number of metric columns to update (columns 4-10 in 1-based, indices 3-9)
  */
 export const COMPANY_SHEET_METRIC_COL_COUNT = 7;
-
-// --- Schema Contract ---
-
-/**
- * Minimal schema: ordered list of column names
- * Defines the expected header row structure
- * Future metric columns will be appended to this array
- */
-export const COMPANY_SHEET_SCHEMA = [
-  COMPANY_SHEET_COL_NAME_COMPANY_ID,
-  COMPANY_SHEET_COL_NAME_RESOLUTION,
-] as const;
 
 /**
  * Valid resolution enum values

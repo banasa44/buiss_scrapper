@@ -19,6 +19,7 @@ import { shouldRunFeedbackIngestion } from "./feedbackWindow";
 import { readCompanyFeedbackFromSheet } from "./feedbackReader";
 import { buildFeedbackChangePlan } from "./feedbackComparison";
 import { validateFeedbackChangePlan } from "./feedbackValidation";
+import { enforceCompanySheetHeader } from "./headerEnforcer";
 import * as logger from "@/logger";
 
 /**
@@ -60,6 +61,9 @@ export async function processSheetsFeedback(
   }
 
   try {
+    // Step 0: Enforce header contract before reading feedback
+    await enforceCompanySheetHeader(client);
+
     // Step 2: Read feedback from Google Sheets
     const feedbackReadResult = await readCompanyFeedbackFromSheet(client);
 

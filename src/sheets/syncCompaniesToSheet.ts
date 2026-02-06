@@ -12,6 +12,7 @@ import type { GoogleSheetsClient } from "@/clients/googleSheets";
 import type { CatalogRuntime, SyncCompaniesResult } from "@/types";
 import { appendNewCompaniesToSheet } from "./appendNewCompanies";
 import { updateCompanyMetricsInSheet } from "./updateCompanyMetrics";
+import { enforceCompanySheetHeader } from "./headerEnforcer";
 import { info } from "@/logger";
 
 /**
@@ -35,6 +36,9 @@ export async function syncCompaniesToSheet(
   client: GoogleSheetsClient,
   catalog: CatalogRuntime,
 ): Promise<SyncCompaniesResult> {
+  // Step 0: Enforce header contract before any operations
+  await enforceCompanySheetHeader(client);
+
   const errors: string[] = [];
 
   // Step 1: Append new companies

@@ -13,11 +13,7 @@ import type {
   SheetCompanyIndex,
   ReadCompanySheetResult,
 } from "@/types";
-import {
-  COMPANY_SHEET_READ_RANGE,
-  COMPANY_SHEET_COL_INDEX_COMPANY_ID,
-  COMPANY_SHEET_COL_INDEX_RESOLUTION,
-} from "@/constants";
+import { COMPANY_SHEET_READ_RANGE, COMPANY_SHEET_COL_INDEX } from "@/constants";
 import { parseCompanyId, parseResolution } from "@/utils";
 import * as logger from "@/logger";
 
@@ -73,8 +69,8 @@ export async function readCompanySheet(
       continue;
     }
 
-    const companyIdValue = row[COMPANY_SHEET_COL_INDEX_COMPANY_ID];
-    const resolutionValue = row[COMPANY_SHEET_COL_INDEX_RESOLUTION];
+    const companyIdValue = row[COMPANY_SHEET_COL_INDEX.company_id];
+    const resolutionValue = row[COMPANY_SHEET_COL_INDEX.resolution];
 
     const companyId = parseCompanyId(companyIdValue);
 
