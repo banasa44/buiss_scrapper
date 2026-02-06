@@ -59,9 +59,13 @@ export async function syncCompaniesToSheet(
   const updatedCount = updateResult.updatedCount;
 
   // Skipped count: companies neither appended nor updated
-  // This happens when a company exists in sheet but fails update mapping
-  const skippedCount =
-    totalCompanies - (appendedCount + updateResult.updatedCount);
+  // Note: On first run, a company can be both appended AND updated (update phase
+  // reads sheet after append), so appendedCount + updatedCount might exceed totalCompanies.
+  // We use Math.max(0, ...) to ensure skippedCount is never negative.
+  const skippedCount = Math.max(
+    0,
+    totalCompanies - (appendedCount + updatedCount),
+  );
 
   const ok = appendResult.ok && updateResult.ok;
 

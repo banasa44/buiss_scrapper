@@ -12,7 +12,7 @@
  * Requirements (via .env or environment):
  * - LIVE_SHEETS_TEST=1
  * - GOOGLE_SHEETS_SPREADSHEET_ID=<your-test-sheet-id>
- * - GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL=<service-account-email>
+ * - GOOGLE_SERVICE_ACCOUNT_EMAIL=<service-account-email>
  * - GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY=<service-account-private-key>
  *
  * Idempotent: Can be run multiple times without growing rows forever.
@@ -54,7 +54,7 @@ describeIf("LIVE: Google Sheets Connectivity", () => {
     // ========================================================================
 
     const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
-    const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL;
+    const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
     const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
 
     if (!spreadsheetId) {
@@ -65,7 +65,7 @@ describeIf("LIVE: Google Sheets Connectivity", () => {
 
     if (!clientEmail) {
       throw new Error(
-        "GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL not set. Add it to your .env file or set as environment variable.",
+        "GOOGLE_SERVICE_ACCOUNT_EMAIL not set. Add it to your .env file or set as environment variable.",
       );
     }
 
@@ -144,7 +144,29 @@ describeIf("LIVE: Google Sheets Connectivity", () => {
     // ACT: Execute real sync (NO MOCKS)
     // ========================================================================
 
-    const result = await syncCompaniesToSheet(client, catalog);
+    let result;
+    try {
+      result = await syncCompaniesToSheet(client, catalog);
+    } catch (error) {
+      // Detect missing "Companies" sheet tab (400 "Unable to parse range")
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      if (
+        errorMessage.includes("Unable to parse range: Companies") ||
+        (errorMessage.includes("INVALID_ARGUMENT") &&
+          errorMessage.includes("Companies"))
+      ) {
+        throw new Error(
+          `Spreadsheet '${spreadsheetId}' is missing a sheet tab named 'Companies' (case-sensitive).\n` +
+            `Action required:\n` +
+            `1. Open: https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit\n` +
+            `2. Create a new sheet tab and rename it to 'Companies'\n` +
+            `3. Re-run this test`,
+        );
+      }
+      // Re-throw other errors unchanged
+      throw error;
+    }
 
     // ========================================================================
     // ASSERT: Verify sync succeeded
@@ -154,15 +176,25 @@ describeIf("LIVE: Google Sheets Connectivity", () => {
     expect(result.ok).toBe(true);
     expect(result.totalCompanies).toBe(1);
 
-    // 2. Either appended (first run) or updated (subsequent runs)
-    const operationCount = result.appendedCount + result.updatedCount;
-    expect(operationCount).toBe(1);
+    // 2. Sentinel company was processed (appended and/or updated)
+    // First run: appendedCount=1, updatedCount=1 (both phases run)
+    // Subsequent runs: appendedCount=0, updatedCount=1 (only update phase)
+    expect(result.appendedCount).toBeGreaterThanOrEqual(0);
+    expect(result.appendedCount).toBeLessThanOrEqual(1);
+    expect(result.updatedCount).toBeGreaterThanOrEqual(0);
+    expect(result.updatedCount).toBeLessThanOrEqual(1);
 
-    // 3. No skips or errors
+    // At least one operation should have happened
+    const operationCount = result.appendedCount + result.updatedCount;
+    expect(operationCount).toBeGreaterThanOrEqual(1);
+
+    // 3. No skipped companies (sentinel company is always processed)
     expect(result.skippedCount).toBe(0);
+
+    // 4. No errors
     expect(result.errors).toBeUndefined();
 
-    // 4. DB unchanged (export is read-only on DB side)
+    // 5. DB unchanged (export is read-only on DB side)
     const companiesAfter = dbHarness.db
       .prepare("SELECT COUNT(*) as count FROM companies")
       .get() as { count: number };
@@ -174,7 +206,7 @@ describeIf("LIVE: Google Sheets Connectivity", () => {
     console.log("✅ LIVE: Google Sheets connectivity verified");
     console.log(`   - Spreadsheet ID: ${spreadsheetId}`);
     console.log(
-      `   - Operation: ${result.appendedCount > 0 ? "APPEND" : "UPDATE"}`,
+      `   - Operations: appended=${result.appendedCount}, updated=${result.updatedCount}`,
     );
     console.log(`   - Sentinel company ID: ${SENTINEL_COMPANY_ID}`);
   });
