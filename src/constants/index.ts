@@ -9,3 +9,4 @@ export * from "./negation";
 export * from "./repost";
 export * from "./sheets";
 export * from "./queries";
+export * from "./runLock";

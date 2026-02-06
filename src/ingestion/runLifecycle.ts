@@ -18,17 +18,18 @@ import { createRun, finishRun as repoFinishRun } from "@/db";
  * Start a new ingestion run for a provider
  *
  * @param provider - The provider identifier (e.g., "infojobs")
- * @param _query - Search query (unused for now; query_fingerprint = NULL)
+ * @param _query - Search query (unused for now)
+ * @param queryKey - Optional query key from query registry (stored as query_fingerprint)
  * @returns The run ID
  */
 export function startRun(
   provider: Provider,
   _query?: SearchOffersQuery,
+  queryKey?: string,
 ): number {
-  // query_fingerprint is NULL for now (future: hash the query for deduplication)
   return createRun({
     provider,
-    query_fingerprint: null,
+    query_fingerprint: queryKey ?? null,
   });
 }
 
@@ -96,14 +97,16 @@ export function createRunAccumulator(): RunAccumulator {
  * @param provider - The provider identifier
  * @param query - Optional search query
  * @param fn - Async function to execute, receives (runId, acc) where acc is a mutable accumulator
+ * @param queryKey - Optional query key from query registry (stored as query_fingerprint)
  * @returns The result of fn
  */
 export async function withRun<T>(
   provider: Provider,
   query: SearchOffersQuery | undefined,
   fn: (runId: number, acc: RunAccumulator) => Promise<T>,
+  queryKey?: string,
 ): Promise<T> {
-  const runId = startRun(provider, query);
+  const runId = startRun(provider, query, queryKey);
   const acc = createRunAccumulator();
   let succeeded = false;
 

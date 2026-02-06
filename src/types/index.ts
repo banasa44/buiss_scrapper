@@ -7,6 +7,8 @@ export * from "./scoring";
 export * from "./repost";
 export * from "./sheets";
 export * from "./queries/registry";
+export * from "./queryState";
+export * from "./runLock";
 export * from "./clients/http";
 export * from "./clients/job_offers";
 // InfoJobs types are intentionally NOT exported from the global barrel.
