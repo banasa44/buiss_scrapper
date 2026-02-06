@@ -140,11 +140,15 @@ Goal: allow the client to resolve companies from Google Sheets and propagate tho
 
 Goal: make it hands-off to run daily with stable behavior.
 
-- [BUILD] Implement per-query run state
-- [DECISION] Choose scheduler cadence
-- [BUILD] Implement runner and scheduling
-- [BUILD] Implement run summary logging
-- [DOC] Document configuration and runbook
+- [DECISION] Define per-query concept + state schema + state machine
+- [BUILD] Implement per-query run state persistence
+- [BUILD] Implement single-run lock (no overlap)
+- [DECISION] Choose scheduler cadence (+ jitter) and retry policy
+- [BUILD] Implement runner core (manual + scheduled share codepath)
+- [BUILD] Implement scheduling wrapper (cron/node-schedule/systemd—el que toqui)
+- [BUILD] Run summary logging + persist run stats
+- [DOC] .env.example + README config
+- [DOC] Runbook + troubleshooting + “reset/resume” guidance
 
 ---
 
