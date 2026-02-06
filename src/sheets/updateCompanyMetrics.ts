@@ -72,6 +72,7 @@ export async function updateCompanyMetricsInSheet(
     return {
       ok: true,
       updatedCount: 0,
+      updatedCompanyIds: [],
       skippedCount: totalCompanies,
       totalCompanies,
     };
@@ -80,6 +81,7 @@ export async function updateCompanyMetricsInSheet(
   // Step 4: Build update operations (company -> metrics + rowIndex)
   // TODO: Optimization - currently updates all companies every run. Future: add dirty flag (updated_at check) to update only when metrics changed.
   const updateOps: UpdateOperation[] = [];
+  const updatedCompanyIds: number[] = [];
   let mappingErrors = 0;
 
   for (const company of existingCompanies) {
@@ -95,6 +97,7 @@ export async function updateCompanyMetricsInSheet(
         rowIndex: sheetRow.rowIndex,
         metricValues,
       });
+      updatedCompanyIds.push(company.id);
     } catch (err) {
       warn("Failed to map company metrics, skipping update", {
         companyId: company.id,
@@ -113,6 +116,7 @@ export async function updateCompanyMetricsInSheet(
     return {
       ok: false,
       updatedCount: 0,
+      updatedCompanyIds: [],
       skippedCount: totalCompanies - existingCompanies.length,
       totalCompanies,
       error: "All companies failed mapping",
@@ -149,6 +153,7 @@ export async function updateCompanyMetricsInSheet(
         return {
           ok: false,
           updatedCount,
+          updatedCompanyIds: updatedCompanyIds.slice(0, updatedCount),
           skippedCount: totalCompanies - existingCompanies.length,
           totalCompanies,
           error: `Failed to update row ${op.rowIndex}: ${updateResult.error?.message || "Unknown error"}`,
@@ -170,6 +175,7 @@ export async function updateCompanyMetricsInSheet(
   return {
     ok: true,
     updatedCount,
+    updatedCompanyIds,
     skippedCount: totalCompanies - existingCompanies.length,
     totalCompanies,
   };

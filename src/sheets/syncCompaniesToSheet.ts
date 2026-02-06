@@ -59,13 +59,13 @@ export async function syncCompaniesToSheet(
   const updatedCount = updateResult.updatedCount;
 
   // Skipped count: companies neither appended nor updated
-  // Note: On first run, a company can be both appended AND updated (update phase
-  // reads sheet after append), so appendedCount + updatedCount might exceed totalCompanies.
-  // We use Math.max(0, ...) to ensure skippedCount is never negative.
-  const skippedCount = Math.max(
-    0,
-    totalCompanies - (appendedCount + updatedCount),
-  );
+  // Use Set union to handle cases where same company can be both appended and updated
+  // in a single run (update phase reads sheet after append phase completes)
+  const actedCompanyIds = new Set([
+    ...appendResult.appendedCompanyIds,
+    ...updateResult.updatedCompanyIds,
+  ]);
+  const skippedCount = totalCompanies - actedCompanyIds.size;
 
   const ok = appendResult.ok && updateResult.ok;
 

@@ -66,6 +66,7 @@ export async function appendNewCompaniesToSheet(
     return {
       ok: true,
       appendedCount: 0,
+      appendedCompanyIds: [],
       skippedCount: totalCompanies,
       totalCompanies,
     };
@@ -73,12 +74,14 @@ export async function appendNewCompaniesToSheet(
 
   // Step 4: Map to sheet rows
   const rowsToAppend: (string | number)[][] = [];
+  const appendedCompanyIds: number[] = [];
   let mappingErrors = 0;
 
   for (const company of newCompanies) {
     try {
       const row = mapCompanyToSheetRow(company, catalog);
       rowsToAppend.push(row);
+      appendedCompanyIds.push(company.id);
     } catch (err) {
       warn("Failed to map company to sheet row, skipping", {
         companyId: company.id,
@@ -97,6 +100,7 @@ export async function appendNewCompaniesToSheet(
     return {
       ok: false,
       appendedCount: 0,
+      appendedCompanyIds: [],
       skippedCount: totalCompanies - newCompanies.length,
       totalCompanies,
       error: "All companies failed mapping",
@@ -132,6 +136,7 @@ export async function appendNewCompaniesToSheet(
       return {
         ok: false,
         appendedCount,
+        appendedCompanyIds: appendedCompanyIds.slice(0, appendedCount),
         skippedCount: totalCompanies - newCompanies.length,
         totalCompanies,
         error: `Failed to append batch ${batchNumber}: ${appendResult.error?.message || "Unknown error"}`,
@@ -152,6 +157,7 @@ export async function appendNewCompaniesToSheet(
   return {
     ok: true,
     appendedCount,
+    appendedCompanyIds,
     skippedCount: totalCompanies - newCompanies.length,
     totalCompanies,
   };

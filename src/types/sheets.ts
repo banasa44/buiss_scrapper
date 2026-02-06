@@ -62,6 +62,8 @@ export type AppendCompaniesResult = {
   ok: boolean;
   /** Number of companies appended to sheet */
   appendedCount: number;
+  /** IDs of companies that were appended */
+  appendedCompanyIds: number[];
   /** Number of companies skipped (already in sheet) */
   skippedCount: number;
   /** Total number of companies in DB */
@@ -78,6 +80,8 @@ export type UpdateCompaniesResult = {
   ok: boolean;
   /** Number of companies updated in sheet */
   updatedCount: number;
+  /** IDs of companies that were updated */
+  updatedCompanyIds: number[];
   /** Number of companies skipped (not in sheet) */
   skippedCount: number;
   /** Total number of companies in DB */
