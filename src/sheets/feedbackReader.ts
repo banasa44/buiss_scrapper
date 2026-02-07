@@ -4,6 +4,10 @@
  * Reads only company_id and resolution columns from the sheet.
  * Returns a simple map of company_id -> resolution for downstream processing.
  *
+ * SECURITY: This module enforces the nightly feedback window gate.
+ * Feedback can ONLY be read during the allowed window (03:00-06:00 Europe/Madrid).
+ * Attempts to read outside the window are rejected immediately.
+ *
  * Part of M6 – Sheets Feedback Loop & Company Lifecycle
  */
 
@@ -11,10 +15,15 @@ import type { GoogleSheetsClient } from "@/clients/googleSheets";
 import type { CompanyFeedbackReadResult, CompanyResolution } from "@/types";
 import { COMPANY_SHEET_READ_RANGE, COMPANY_SHEET_COL_INDEX } from "@/constants";
 import { parseCompanyId, parseResolution } from "@/utils";
+import { shouldRunFeedbackIngestion } from "./feedbackWindow";
 import * as logger from "@/logger";
 
 /**
  * Read company feedback from Google Sheets
+ *
+ * SECURITY GUARD: This function enforces the nightly feedback window gate.
+ * It will refuse to read feedback outside the allowed window, even if the caller
+ * forgets to check. This is a defensive measure to prevent accidental daytime reads.
  *
  * Reads only the columns we need:
  * - company_id
@@ -30,11 +39,29 @@ import * as logger from "@/logger";
  * - Never throws for data issues (only for API failures)
  *
  * @param client - GoogleSheetsClient instance
+ * @param now - Optional Date for window check (defaults to current time, used for testing)
  * @returns CompanyFeedbackReadResult with map and counters
+ * @throws Error if called outside the allowed feedback window
  */
 export async function readCompanyFeedbackFromSheet(
   client: GoogleSheetsClient,
+  now?: Date,
 ): Promise<CompanyFeedbackReadResult> {
+  // SECURITY GUARD: Enforce feedback window gate
+  // This prevents accidental daytime reads even if caller forgets to check
+  const windowCheck = shouldRunFeedbackIngestion(now);
+  if (!windowCheck.allowed) {
+    const error = new Error(
+      `Feedback read blocked: ${windowCheck.reason}. Feedback can only be read during the nightly window.`,
+    );
+    logger.error("Attempted to read feedback outside allowed window", {
+      reason: windowCheck.reason,
+      currentHour: windowCheck.currentHour,
+      timezone: windowCheck.timezone,
+    });
+    throw error;
+  }
+
   logger.debug("Reading company feedback from sheet", {
     range: COMPANY_SHEET_READ_RANGE,
   });

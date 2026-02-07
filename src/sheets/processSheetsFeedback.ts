@@ -73,8 +73,8 @@ export async function processSheetsFeedback(
     await enforceCompanySheetHeader(client);
 
     // Step 3: Read feedback from Google Sheets
-    // Step 3: Read feedback from Google Sheets
-    const feedbackReadResult = await readCompanyFeedbackFromSheet(client);
+    // Pass 'now' parameter to feedbackReader for consistent window checking
+    const feedbackReadResult = await readCompanyFeedbackFromSheet(client, now);
 
     // Step 4: Build diff plan (compare sheet vs DB)
     const changePlan = buildFeedbackChangePlan(feedbackReadResult);
