@@ -37,7 +37,8 @@ describeIf("LIVE: Google Sheets Multi-Row Append", () => {
   let dbHarness: TestDbHarness;
 
   // Test company IDs (fixed for idempotency)
-  const TEST_COMPANY_IDS = [900001, 900002, 900003, 900004, 900005];
+  // Range: 910001-910005 (LIVE-1 exclusive - no overlap with other tests)
+  const TEST_COMPANY_IDS = [910001, 910002, 910003, 910004, 910005];
   const EXPECTED_COUNT = TEST_COMPANY_IDS.length;
 
   beforeEach(() => {
@@ -86,7 +87,7 @@ describeIf("LIVE: Google Sheets Multi-Row Append", () => {
 
       const companyData = [
         {
-          id: 900001,
+          id: 910001,
           name: "Alpha Corp [LIVE TEST]",
           display: "Alpha Corp",
           normalized: "alpha corp live test",
@@ -100,7 +101,7 @@ describeIf("LIVE: Google Sheets Multi-Row Append", () => {
           top_category: "cat_backend",
         },
         {
-          id: 900002,
+          id: 910002,
           name: "Beta Solutions [LIVE TEST]",
           display: "Beta Solutions",
           normalized: "beta solutions live test",
@@ -114,7 +115,7 @@ describeIf("LIVE: Google Sheets Multi-Row Append", () => {
           top_category: "cat_frontend",
         },
         {
-          id: 900003,
+          id: 910003,
           name: "Gamma Industries [LIVE TEST]",
           display: "Gamma Industries",
           normalized: "gamma industries live test",
@@ -128,7 +129,7 @@ describeIf("LIVE: Google Sheets Multi-Row Append", () => {
           top_category: "cat_devops",
         },
         {
-          id: 900004,
+          id: 910004,
           name: "Delta Systems [LIVE TEST]",
           display: "Delta Systems",
           normalized: "delta systems live test",
@@ -142,7 +143,7 @@ describeIf("LIVE: Google Sheets Multi-Row Append", () => {
           top_category: "cat_backend",
         },
         {
-          id: 900005,
+          id: 910005,
           name: "Epsilon Labs [LIVE TEST]",
           display: "Epsilon Labs",
           normalized: "epsilon labs live test",
@@ -321,7 +322,7 @@ describeIf("LIVE: Google Sheets Multi-Row Append", () => {
         expect(typeof companyName).toBe("string");
         expect(companyName.length).toBeGreaterThan(0);
 
-        // Column C: resolution (should be "PENDING" for test data)
+        // Column C: resolution (should be "PENDING" for our test data)
         expect(row[2]).toBe("PENDING");
 
         // Column D: max_score (numeric string or number)
