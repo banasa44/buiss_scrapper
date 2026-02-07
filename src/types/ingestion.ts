@@ -120,6 +120,8 @@ export type RunInfojobsPipelineInput = {
   maxPages?: number;
   /** Maximum number of offers to fetch (default from constants) */
   maxOffers?: number;
+  /** Optional query key from query registry (for M7 scheduling) */
+  queryKey?: string;
 };
 
 /**

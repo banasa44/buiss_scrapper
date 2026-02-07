@@ -67,6 +67,7 @@ export async function runInfojobsPipeline(
   const batchResult = await runOfferBatchIngestion(
     client.provider,
     searchResult.offers,
+    input.queryKey,
   );
 
   // Log summary

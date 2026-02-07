@@ -1,0 +1,418 @@
+/**
+ * Runner core — executes registered queries sequentially with state management
+ *
+ * This module implements the orchestration logic for running all registered
+ * queries once, with proper locking, state transitions, and error handling.
+ *
+ * Key responsibilities:
+ * - Acquire global run lock (prevent concurrent executions)
+ * - Ensure query_state rows exist for all registered queries
+ * - Execute queries sequentially, grouped by client
+ * - Handle errors with retry logic (max 3 attempts)
+ * - Classify errors: RATE_LIMIT, TRANSIENT, FATAL
+ * - Pause clients on rate limit (6 hours)
+ * - Add jitter between queries (10-60s)
+ * - Persist queryKey in ingestion_runs for history
+ */
+
+import { randomUUID } from "crypto";
+import type {
+  RegisteredQuery,
+  ErrorClassification,
+  ClientPauseState,
+  SearchOffersQuery,
+} from "@/types";
+import { ALL_QUERIES } from "@/queries";
+import { openDb, runMigrations } from "@/db";
+import {
+  getQueryState,
+  upsertQueryState,
+  markQueryRunning,
+  markQuerySuccess,
+  markQueryError,
+} from "@/db/repos/queryStateRepo";
+import { acquireRunLock, releaseRunLock } from "@/db/repos/runLockRepo";
+import { runInfojobsPipeline } from "@/ingestion/pipelines/infojobs";
+import { InfoJobsClient } from "@/clients/infojobs";
+import {
+  MAX_RETRIES_PER_QUERY,
+  CLIENT_PAUSE_DURATION_SECONDS,
+  QUERY_JITTER_MIN_MS,
+  QUERY_JITTER_MAX_MS,
+} from "@/constants";
+import * as logger from "@/logger";
+
+/**
+ * Classify error for retry and pause decisions
+ *
+ * - RATE_LIMIT: HTTP 429 or provider-specific rate limit signals
+ * - TRANSIENT: Timeouts, 5xx errors, network failures
+ * - FATAL: Missing credentials, invalid config, schema mismatch
+ *
+ * @param error - The error object
+ * @returns Error classification
+ */
+function classifyError(error: unknown): ErrorClassification {
+  if (!(error instanceof Error)) {
+    return "TRANSIENT";
+  }
+
+  const message = error.message.toLowerCase();
+
+  // FATAL: auth/config errors
+  if (
+    message.includes("authentication") ||
+    message.includes("missing") ||
+    message.includes("invalid config") ||
+    message.includes("credentials")
+  ) {
+    return "FATAL";
+  }
+
+  // RATE_LIMIT: HTTP 429 or explicit rate limit messages
+  if (message.includes("429") || message.includes("rate limit")) {
+    return "RATE_LIMIT";
+  }
+
+  // TRANSIENT: timeouts, 5xx, network errors
+  if (
+    message.includes("timeout") ||
+    message.includes("network") ||
+    message.includes("econnrefused") ||
+    message.includes("enotfound") ||
+    /5\d{2}/.test(message) // 500, 502, 503, 504
+  ) {
+    return "TRANSIENT";
+  }
+
+  // Default to TRANSIENT (safer to retry than to give up)
+  return "TRANSIENT";
+}
+
+/**
+ * Get error code string for query_state persistence
+ *
+ * @param classification - Error classification
+ * @returns Short error code (e.g., "RATE_LIMIT", "HTTP_5XX", "AUTH")
+ */
+function getErrorCode(classification: ErrorClassification): string {
+  return classification;
+}
+
+/**
+ * Extract short error message for query_state persistence
+ *
+ * @param error - The error object
+ * @returns Truncated error message (max 500 chars)
+ */
+function getErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.length > 500 ? message.substring(0, 497) + "..." : message;
+}
+
+/**
+ * Sleep for a random jitter duration
+ *
+ * @param minMs - Minimum sleep duration (milliseconds)
+ * @param maxMs - Maximum sleep duration (milliseconds)
+ */
+async function sleepJitter(minMs: number, maxMs: number): Promise<void> {
+  const jitter = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+  logger.debug("Sleeping for jitter", { jitterMs: jitter });
+  await new Promise((resolve) => setTimeout(resolve, jitter));
+}
+
+/**
+ * Check if client is currently paused due to rate limiting
+ *
+ * @param client - Client identifier
+ * @param pauseState - Client pause state map
+ * @returns true if client is paused, false otherwise
+ */
+function isClientPaused(client: string, pauseState: ClientPauseState): boolean {
+  const pauseUntil = pauseState.get(client);
+  if (!pauseUntil) {
+    return false;
+  }
+
+  const now = new Date();
+  const pauseExpiry = new Date(pauseUntil);
+
+  if (now >= pauseExpiry) {
+    // Pause expired, remove from map
+    pauseState.delete(client);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Pause client due to rate limiting
+ *
+ * @param client - Client identifier
+ * @param pauseState - Client pause state map
+ * @param durationSeconds - Pause duration in seconds
+ */
+function pauseClient(
+  client: string,
+  pauseState: ClientPauseState,
+  durationSeconds: number,
+): void {
+  const pauseUntil = new Date(Date.now() + durationSeconds * 1000);
+  pauseState.set(client, pauseUntil.toISOString());
+  logger.warn("Client paused due to rate limit", {
+    client,
+    pauseUntil: pauseUntil.toISOString(),
+    durationSeconds,
+  });
+}
+
+/**
+ * Execute a single query with retry logic
+ *
+ * @param query - The registered query to execute
+ * @param pauseState - Client pause state map
+ * @returns true if successful, false if failed (after retries)
+ */
+async function executeQuery(
+  query: RegisteredQuery,
+  pauseState: ClientPauseState,
+): Promise<boolean> {
+  logger.info("Executing query", {
+    queryKey: query.queryKey,
+    client: query.client,
+    name: query.name,
+  });
+
+  // Mark query as running
+  markQueryRunning(query.queryKey);
+
+  let lastError: Error | null = null;
+  let attempts = 0;
+
+  while (attempts < MAX_RETRIES_PER_QUERY) {
+    attempts++;
+
+    try {
+      // Execute query based on client type
+      if (query.client === "infojobs") {
+        const client = new InfoJobsClient();
+        await runInfojobsPipeline({
+          client,
+          text: query.params.text,
+          updatedSince: query.params.updatedSince,
+          maxPages: query.params.maxPages,
+          maxOffers: query.params.maxOffers,
+          queryKey: query.queryKey,
+        });
+      } else {
+        throw new Error(`Unsupported client: ${query.client}`);
+      }
+
+      // Success!
+      markQuerySuccess(query.queryKey);
+      logger.info("Query executed successfully", {
+        queryKey: query.queryKey,
+        client: query.client,
+        name: query.name,
+        attempts,
+      });
+      return true;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const classification = classifyError(error);
+
+      logger.warn("Query execution failed", {
+        queryKey: query.queryKey,
+        client: query.client,
+        name: query.name,
+        attempt: attempts,
+        maxRetries: MAX_RETRIES_PER_QUERY,
+        errorClassification: classification,
+        error: getErrorMessage(error),
+      });
+
+      // FATAL errors should not be retried
+      if (classification === "FATAL") {
+        logger.error("Query failed with FATAL error (no retry)", {
+          queryKey: query.queryKey,
+          client: query.client,
+          name: query.name,
+          error: getErrorMessage(error),
+        });
+        break;
+      }
+
+      // RATE_LIMIT: pause client and break (no more retries for this query)
+      if (classification === "RATE_LIMIT") {
+        pauseClient(query.client, pauseState, CLIENT_PAUSE_DURATION_SECONDS);
+        break;
+      }
+
+      // TRANSIENT: retry if attempts remain
+      if (attempts < MAX_RETRIES_PER_QUERY) {
+        logger.debug("Retrying query after transient error", {
+          queryKey: query.queryKey,
+          attempt: attempts,
+          maxRetries: MAX_RETRIES_PER_QUERY,
+        });
+        // Small backoff between retries (2 seconds)
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+  }
+
+  // If we reach here, all retries exhausted or non-retryable error
+  const classification = classifyError(lastError);
+  markQueryError(query.queryKey, undefined, {
+    errorCode: getErrorCode(classification),
+    errorMessage: getErrorMessage(lastError),
+  });
+
+  logger.error("Query failed after all retries", {
+    queryKey: query.queryKey,
+    client: query.client,
+    name: query.name,
+    attempts,
+    errorClassification: classification,
+    error: getErrorMessage(lastError),
+  });
+
+  return false;
+}
+
+/**
+ * Ensure query_state rows exist for all registered queries
+ *
+ * Upserts missing rows with IDLE status. Existing rows are not modified.
+ */
+function ensureQueryStateRows(): void {
+  logger.debug("Ensuring query_state rows exist", {
+    totalQueries: ALL_QUERIES.length,
+  });
+
+  for (const query of ALL_QUERIES) {
+    const existing = getQueryState(query.queryKey);
+    if (!existing) {
+      upsertQueryState({
+        query_key: query.queryKey,
+        client: query.client,
+        name: query.name,
+        status: "IDLE",
+      });
+      logger.debug("Created query_state row", {
+        queryKey: query.queryKey,
+        client: query.client,
+        name: query.name,
+      });
+    }
+  }
+}
+
+/**
+ * Run all registered queries once, sequentially
+ *
+ * This is the main entry point for the runner core.
+ * It acquires the global run lock, ensures query_state rows exist,
+ * and executes all queries with proper error handling and client pausing.
+ *
+ * Queries are executed in the order they appear in ALL_QUERIES.
+ * Queries for paused clients are skipped.
+ *
+ * @returns Statistics about the run (total, success, failed, skipped)
+ */
+export async function runOnce(): Promise<{
+  total: number;
+  success: number;
+  failed: number;
+  skipped: number;
+}> {
+  logger.info("Starting runner (single pass)");
+
+  // Open database and run migrations
+  logger.debug("Opening database and running migrations");
+  openDb();
+  runMigrations();
+
+  // Generate unique owner ID for this run
+  const ownerId = randomUUID();
+
+  // Try to acquire global run lock
+  logger.debug("Acquiring global run lock", { ownerId });
+  const lockResult = acquireRunLock(ownerId);
+
+  if (!lockResult.ok) {
+    logger.warn("Failed to acquire run lock - another run may be in progress", {
+      reason: lockResult.reason,
+    });
+    return { total: 0, success: 0, failed: 0, skipped: 0 };
+  }
+
+  logger.info("Global run lock acquired", { ownerId });
+
+  try {
+    // Ensure query_state rows exist for all registered queries
+    ensureQueryStateRows();
+
+    // Track client pause state (rate limiting)
+    const pauseState: ClientPauseState = new Map();
+
+    let successCount = 0;
+    let failedCount = 0;
+    let skippedCount = 0;
+
+    // Execute queries sequentially
+    for (let i = 0; i < ALL_QUERIES.length; i++) {
+      const query = ALL_QUERIES[i];
+
+      // Check if client is paused
+      if (isClientPaused(query.client, pauseState)) {
+        logger.info("Skipping query (client paused)", {
+          queryKey: query.queryKey,
+          client: query.client,
+          name: query.name,
+        });
+        skippedCount++;
+        continue;
+      }
+
+      // Execute query
+      const success = await executeQuery(query, pauseState);
+      if (success) {
+        successCount++;
+      } else {
+        failedCount++;
+      }
+
+      // Sleep jitter between queries (except after last query)
+      if (i < ALL_QUERIES.length - 1) {
+        await sleepJitter(QUERY_JITTER_MIN_MS, QUERY_JITTER_MAX_MS);
+      }
+    }
+
+    // Log summary
+    logger.info("Runner completed (single pass)", {
+      total: ALL_QUERIES.length,
+      success: successCount,
+      failed: failedCount,
+      skipped: skippedCount,
+    });
+
+    return {
+      total: ALL_QUERIES.length,
+      success: successCount,
+      failed: failedCount,
+      skipped: skippedCount,
+    };
+  } finally {
+    // Always release the lock
+    logger.debug("Releasing global run lock", { ownerId });
+    const released = releaseRunLock(ownerId);
+    if (released) {
+      logger.info("Global run lock released", { ownerId });
+    } else {
+      logger.warn("Failed to release run lock (may not be owned)", { ownerId });
+    }
+  }
+}
