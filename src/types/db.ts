@@ -191,6 +191,8 @@ export type IngestionRun = {
   http_429_count: number | null;
   errors_count: number | null;
   notes: string | null;
+  companies_aggregated: number | null;
+  companies_failed: number | null;
 };
 
 /**

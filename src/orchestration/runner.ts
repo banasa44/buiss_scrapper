@@ -29,12 +29,16 @@ import {
   markQueryRunning,
   markQuerySuccess,
   markQueryError,
+  listQueryStates,
 } from "@/db/repos/queryStateRepo";
 import { acquireRunLock, releaseRunLock } from "@/db/repos/runLockRepo";
 import {
   isClientPaused as isClientPausedDb,
   setClientPause,
+  getClientPause,
+  listClientPauses,
 } from "@/db/repos/clientPauseRepo";
+import { getLatestRunByQueryKey } from "@/db/repos/runsRepo";
 import { runInfojobsPipeline } from "@/ingestion/pipelines/infojobs";
 import { InfoJobsClient } from "@/clients/infojobs";
 import {
@@ -152,6 +156,8 @@ function pauseClient(client: string, durationSeconds: number): void {
  * @returns true if successful, false if failed (after retries)
  */
 async function executeQuery(query: RegisteredQuery): Promise<boolean> {
+  const startMs = Date.now();
+
   logger.info("Executing query", {
     queryKey: query.queryKey,
     client: query.client,
@@ -185,11 +191,26 @@ async function executeQuery(query: RegisteredQuery): Promise<boolean> {
 
       // Success!
       markQuerySuccess(query.queryKey);
+
+      // Fetch run metrics
+      const elapsedMs = Date.now() - startMs;
+      const run = getLatestRunByQueryKey(query.queryKey);
+
       logger.info("Query executed successfully", {
         queryKey: query.queryKey,
         client: query.client,
         name: query.name,
+        status: "SUCCESS",
         attempts,
+        elapsedMs,
+        ...(run && {
+          runId: run.id,
+          pages_fetched: run.pages_fetched,
+          offers_fetched: run.offers_fetched,
+          companies_aggregated: run.companies_aggregated,
+          companies_failed: run.companies_failed,
+          http_429_count: run.http_429_count,
+        }),
       });
       return true;
     } catch (error) {
@@ -243,13 +264,25 @@ async function executeQuery(query: RegisteredQuery): Promise<boolean> {
     errorMessage: getErrorMessage(lastError),
   });
 
+  // Fetch partial run metrics (may exist even on failure)
+  const elapsedMs = Date.now() - startMs;
+  const run = getLatestRunByQueryKey(query.queryKey);
+
   logger.error("Query failed after all retries", {
     queryKey: query.queryKey,
     client: query.client,
     name: query.name,
+    status: "ERROR",
     attempts,
-    errorClassification: classification,
-    error: getErrorMessage(lastError),
+    elapsedMs,
+    error_code: getErrorCode(classification),
+    error_message: getErrorMessage(lastError),
+    ...(run && {
+      runId: run.id,
+      pages_fetched: run.pages_fetched,
+      offers_fetched: run.offers_fetched,
+      http_429_count: run.http_429_count,
+    }),
   });
 
   return false;
@@ -301,6 +334,7 @@ export async function runOnce(): Promise<{
   failed: number;
   skipped: number;
 }> {
+  const cycleStartMs = Date.now();
   logger.info("Starting runner (single pass)");
 
   // Open database and run migrations
@@ -338,10 +372,14 @@ export async function runOnce(): Promise<{
 
       // Check if client is paused (using persistent DB state)
       if (isClientPausedDb(query.client)) {
-        logger.info("Skipping query (client paused)", {
+        const pauseInfo = getClientPause(query.client);
+        logger.info("Query skipped (client paused)", {
           queryKey: query.queryKey,
           client: query.client,
           name: query.name,
+          status: "SKIPPED",
+          paused_until: pauseInfo?.paused_until,
+          reason: pauseInfo?.reason,
         });
         skippedCount++;
         continue;
@@ -362,11 +400,35 @@ export async function runOnce(): Promise<{
     }
 
     // Log summary
+    const cycleElapsedMs = Date.now() - cycleStartMs;
+    const pausedClients = listClientPauses();
+    const allStates = listQueryStates();
+    const topFailures = allStates
+      .filter((s) => s.consecutive_failures > 0)
+      .sort((a, b) => b.consecutive_failures - a.consecutive_failures)
+      .slice(0, 2);
+
     logger.info("Runner completed (single pass)", {
       total: ALL_QUERIES.length,
       success: successCount,
       failed: failedCount,
       skipped: skippedCount,
+      elapsedMs: cycleElapsedMs,
+      pausedClients: pausedClients.length,
+      ...(pausedClients.length > 0 && {
+        paused: pausedClients.map((p) => ({
+          client: p.client,
+          paused_until: p.paused_until,
+          reason: p.reason,
+        })),
+      }),
+      ...(topFailures.length > 0 && {
+        topFailures: topFailures.map((f) => ({
+          queryKey: f.query_key,
+          consecutive_failures: f.consecutive_failures,
+          error_code: f.error_code,
+        })),
+      }),
     });
 
     return {
@@ -455,7 +517,14 @@ export async function runForever(): Promise<void> {
     }
 
     // Sleep between cycles with jitter
-    await sleepJitter(CYCLE_SLEEP_MIN_MS, CYCLE_SLEEP_MAX_MS);
+    const sleepMs =
+      CYCLE_SLEEP_MIN_MS +
+      Math.random() * (CYCLE_SLEEP_MAX_MS - CYCLE_SLEEP_MIN_MS);
+    logger.info("Cycle complete, sleeping before next iteration", {
+      cycleCount,
+      sleepMs: Math.round(sleepMs),
+    });
+    await new Promise((resolve) => setTimeout(resolve, sleepMs));
   }
 
   logger.info("Continuous runner stopped", { totalCycles: cycleCount });

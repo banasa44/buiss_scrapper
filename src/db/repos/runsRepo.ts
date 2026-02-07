@@ -99,3 +99,25 @@ export function getRunById(id: number): IngestionRun | undefined {
     | IngestionRun
     | undefined;
 }
+
+/**
+ * Get most recent ingestion run by query key
+ *
+ * @param queryKey - Query key stored in query_fingerprint column
+ * @returns Most recent run or undefined if none found
+ */
+export function getLatestRunByQueryKey(
+  queryKey: string,
+): IngestionRun | undefined {
+  const db = getDb();
+  return db
+    .prepare(
+      `
+    SELECT * FROM ingestion_runs
+    WHERE query_fingerprint = ?
+    ORDER BY id DESC
+    LIMIT 1
+  `,
+    )
+    .get(queryKey) as IngestionRun | undefined;
+}
