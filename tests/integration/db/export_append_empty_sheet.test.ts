@@ -162,6 +162,26 @@ X6LloxV8OuZpUXhq0/ihp0JY
         };
       }
 
+      // Spreadsheet metadata endpoint (for getSheetIdByTitle)
+      if (urlString.includes("includeGridData=false") && method === "GET") {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            spreadsheetId: "test-spreadsheet-export",
+            sheets: [
+              {
+                properties: {
+                  sheetId: 0,
+                  title: "Companies",
+                  index: 0,
+                },
+              },
+            ],
+          }),
+        };
+      }
+
       // Header range read (enforcer check)
       if (
         (urlString.includes("Companies!A1:J1") ||
@@ -195,6 +215,18 @@ X6LloxV8OuZpUXhq0/ihp0JY
             updatedRows: 1,
             updatedColumns: 10,
             updatedCells: 10,
+          }),
+        };
+      }
+
+      // Spreadsheet batchUpdate endpoint (data validation)
+      if (urlString.includes(":batchUpdate") && method === "POST") {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            spreadsheetId: "test-spreadsheet-export",
+            replies: [{}],
           }),
         };
       }

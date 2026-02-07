@@ -27,9 +27,15 @@ import * as logger from "@/logger";
  *
  * Orchestrates the complete feedback pipeline in strict order:
  * 1. Check if within feedback window (03:00-06:00 Europe/Madrid)
- * 2. Read company_id + resolution from sheet
- * 3. Compare against DB state and build change plan
- * 4. Validate and classify transitions by lifecycle impact
+ * 2. Enforce header contract (read-only validation)
+ * 3. Read company_id + resolution from sheet
+ * 4. Compare against DB state and build change plan
+ * 5. Validate and classify transitions by lifecycle impact
+ *
+ * NOTE: This function is READ-ONLY on the sheet side. It validates the header
+ * exists and reads feedback, but does NOT write or modify the sheet.
+ * Sheet provisioning (header write + data validation) happens in the export
+ * pipeline (syncCompaniesToSheet).
  *
  * Error handling:
  * - Window blocked: returns ok=true, skipped=true (not an error)
@@ -61,16 +67,19 @@ export async function processSheetsFeedback(
   }
 
   try {
-    // Step 0: Enforce header contract before reading feedback
+    // Step 2: Enforce header contract (read-only validation)
+    // NOTE: This only validates the header exists and matches. It does NOT write.
+    // If header is missing, this will throw an error.
     await enforceCompanySheetHeader(client);
 
-    // Step 2: Read feedback from Google Sheets
+    // Step 3: Read feedback from Google Sheets
+    // Step 3: Read feedback from Google Sheets
     const feedbackReadResult = await readCompanyFeedbackFromSheet(client);
 
-    // Step 3: Build diff plan (compare sheet vs DB)
+    // Step 4: Build diff plan (compare sheet vs DB)
     const changePlan = buildFeedbackChangePlan(feedbackReadResult);
 
-    // Step 4: Validate and classify transitions
+    // Step 5: Validate and classify transitions
     const validatedPlan = validateFeedbackChangePlan(changePlan);
 
     // Note: Final audit logging done in runOfferBatch.ts (BUILD-11)

@@ -12,13 +12,14 @@ import type { GoogleSheetsClient } from "@/clients/googleSheets";
 import type { CatalogRuntime, SyncCompaniesResult } from "@/types";
 import { appendNewCompaniesToSheet } from "./appendNewCompanies";
 import { updateCompanyMetricsInSheet } from "./updateCompanyMetrics";
-import { enforceCompanySheetHeader } from "./headerEnforcer";
+import { provisionCompaniesSheet } from "./provisionCompaniesSheet";
 import { info } from "@/logger";
 
 /**
  * Sync companies to sheet: append new, update existing
  *
  * Process:
+ * 0. Provision sheet (header + data validation)
  * 1. Append new companies (not in sheet)
  * 2. Update metrics for existing companies (already in sheet)
  * 3. Emit single summary log with combined statistics
@@ -36,8 +37,8 @@ export async function syncCompaniesToSheet(
   client: GoogleSheetsClient,
   catalog: CatalogRuntime,
 ): Promise<SyncCompaniesResult> {
-  // Step 0: Enforce header contract before any operations
-  await enforceCompanySheetHeader(client);
+  // Step 0: Provision sheet (header + data validation)
+  await provisionCompaniesSheet(client);
 
   const errors: string[] = [];
 

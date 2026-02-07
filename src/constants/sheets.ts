@@ -213,3 +213,10 @@ export const SHEETS_UPDATE_BATCH_SIZE = 50;
 export const FEEDBACK_WINDOW_START_HOUR = 3; // 03:00
 export const FEEDBACK_WINDOW_END_HOUR = 6; // 06:00 (exclusive)
 export const FEEDBACK_WINDOW_TIMEZONE = "Europe/Madrid";
+
+/**
+ * Maximum row number for data validation rules
+ * Applies validation to rows 2..COMPANY_SHEET_VALIDATION_MAX_ROW
+ * Higher values allow more companies but increase API request size
+ */
+export const COMPANY_SHEET_VALIDATION_MAX_ROW = 1000;

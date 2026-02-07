@@ -112,3 +112,11 @@ export type SheetOperationError = {
 export type SheetOperationResult<T> =
   | SheetOperationSuccess<T>
   | SheetOperationError;
+
+/**
+ * Spreadsheet batch update response (for structural changes like validation rules)
+ */
+export type SpreadsheetBatchUpdateResult = {
+  spreadsheetId: string;
+  replies: unknown[];
+};

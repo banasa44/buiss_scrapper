@@ -348,7 +348,9 @@ export class GoogleSheetsClient {
         range: string;
         majorDimension?: string;
         values?: unknown[][];
-      }>(endpoint, { method: "GET" });
+      }>(endpoint, {
+        method: "GET",
+      });
 
       return {
         ok: true,
@@ -370,6 +372,80 @@ export class GoogleSheetsClient {
       logger.error("Failed to read Google Sheets range", {
         spreadsheetId: this.spreadsheetId,
         range,
+        error: errorDetails,
+      });
+
+      return {
+        ok: false,
+        error: errorDetails,
+      };
+    }
+  }
+
+  /**
+   * Get sheetId by sheet title from spreadsheet metadata
+   *
+   * Fetches minimal spreadsheet metadata (no grid data) and finds the sheet
+   * with the specified title.
+   *
+   * @param sheetTitle - Title of the sheet to find (e.g., "Companies")
+   * @returns SheetOperationResult with sheetId or error details
+   */
+  async getSheetIdByTitle(
+    sheetTitle: string,
+  ): Promise<SheetOperationResult<{ sheetId: number; sheetTitle: string }>> {
+    logger.debug("Fetching sheet ID by title", {
+      spreadsheetId: this.spreadsheetId,
+      sheetTitle,
+    });
+
+    try {
+      const endpoint = `/spreadsheets/${this.spreadsheetId}?includeGridData=false`;
+      const response = await this.apiRequest<{
+        spreadsheetId: string;
+        sheets: Array<{
+          properties: {
+            sheetId: number;
+            title: string;
+            index: number;
+          };
+        }>;
+      }>(endpoint, {
+        method: "GET",
+      });
+
+      const sheet = response.sheets.find(
+        (s) => s.properties.title === sheetTitle,
+      );
+
+      if (!sheet) {
+        const availableTitles = response.sheets
+          .map((s) => s.properties.title)
+          .join(", ");
+        throw new Error(
+          `Sheet "${sheetTitle}" not found in spreadsheet. Available sheets: ${availableTitles}`,
+        );
+      }
+
+      return {
+        ok: true,
+        data: {
+          sheetId: sheet.properties.sheetId,
+          sheetTitle: sheet.properties.title,
+        },
+      };
+    } catch (error) {
+      const errorDetails: GoogleSheetsErrorDetails =
+        error instanceof GoogleSheetsError
+          ? error.details
+          : {
+              message: error instanceof Error ? error.message : String(error),
+              spreadsheetId: this.spreadsheetId,
+            };
+
+      logger.error("Failed to get sheet ID by title", {
+        spreadsheetId: this.spreadsheetId,
+        sheetTitle,
         error: errorDetails,
       });
 
@@ -498,6 +574,68 @@ export class GoogleSheetsClient {
       logger.error("Failed to append rows to Google Sheets", {
         spreadsheetId: this.spreadsheetId,
         range,
+        error: errorDetails,
+      });
+
+      return {
+        ok: false,
+        error: errorDetails,
+      };
+    }
+  }
+
+  /**
+   * Apply spreadsheet-level batch update (for structural changes like validation rules)
+   *
+   * This is different from batchUpdate() which updates VALUES.
+   * This method uses spreadsheets.batchUpdate endpoint for structural changes:
+   * - Data validation rules
+   * - Formatting
+   * - Protected ranges
+   * - Sheet properties
+   *
+   * @param requests - Array of Request objects per Google Sheets API schema
+   * @returns SheetOperationResult with batch update response or error details
+   */
+  async applySheetBatchUpdate(requests: unknown[]): Promise<
+    SheetOperationResult<{
+      spreadsheetId: string;
+      replies: unknown[];
+    }>
+  > {
+    logger.debug("Applying spreadsheet batch update", {
+      spreadsheetId: this.spreadsheetId,
+      requestCount: requests.length,
+    });
+
+    try {
+      const endpoint = `/spreadsheets/${this.spreadsheetId}:batchUpdate`;
+      const response = await this.apiRequest<{
+        spreadsheetId: string;
+        replies: unknown[];
+      }>(endpoint, {
+        method: "POST",
+        body: JSON.stringify({ requests }),
+      });
+
+      return {
+        ok: true,
+        data: {
+          spreadsheetId: response.spreadsheetId,
+          replies: response.replies,
+        },
+      };
+    } catch (error) {
+      const errorDetails: GoogleSheetsErrorDetails =
+        error instanceof GoogleSheetsError
+          ? error.details
+          : {
+              message: error instanceof Error ? error.message : String(error),
+              spreadsheetId: this.spreadsheetId,
+            };
+
+      logger.error("Failed to apply spreadsheet batch update", {
+        spreadsheetId: this.spreadsheetId,
         error: errorDetails,
       });
 
