@@ -9,6 +9,7 @@ export * from "./sheets";
 export * from "./queries/registry";
 export * from "./queryState";
 export * from "./runLock";
+export * from "./clientPause";
 export * from "./runner";
 export * from "./clients/http";
 export * from "./clients/job_offers";

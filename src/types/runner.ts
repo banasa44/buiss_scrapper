@@ -20,11 +20,3 @@
  *   - Requires manual intervention
  */
 export type ErrorClassification = "RATE_LIMIT" | "TRANSIENT" | "FATAL";
-
-/**
- * Client pause state tracking
- *
- * Tracks when a client should be paused due to rate limiting.
- * Key = client/provider name, Value = ISO timestamp when pause expires
- */
-export type ClientPauseState = Map<string, string>;

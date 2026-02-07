@@ -10,3 +10,4 @@ export * from "./repos/runsRepo";
 export * from "./repos/matchesRepo";
 export * from "./repos/queryStateRepo";
 export * from "./repos/runLockRepo";
+export * from "./repos/clientPauseRepo";

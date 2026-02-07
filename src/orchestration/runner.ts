@@ -19,7 +19,6 @@ import { randomUUID } from "crypto";
 import type {
   RegisteredQuery,
   ErrorClassification,
-  ClientPauseState,
   SearchOffersQuery,
 } from "@/types";
 import { ALL_QUERIES } from "@/queries";
@@ -32,6 +31,10 @@ import {
   markQueryError,
 } from "@/db/repos/queryStateRepo";
 import { acquireRunLock, releaseRunLock } from "@/db/repos/runLockRepo";
+import {
+  isClientPaused as isClientPausedDb,
+  setClientPause,
+} from "@/db/repos/clientPauseRepo";
 import { runInfojobsPipeline } from "@/ingestion/pipelines/infojobs";
 import { InfoJobsClient } from "@/clients/infojobs";
 import {
@@ -39,6 +42,8 @@ import {
   CLIENT_PAUSE_DURATION_SECONDS,
   QUERY_JITTER_MIN_MS,
   QUERY_JITTER_MAX_MS,
+  CYCLE_SLEEP_MIN_MS,
+  CYCLE_SLEEP_MAX_MS,
 } from "@/constants";
 import * as logger from "@/logger";
 
@@ -123,44 +128,16 @@ async function sleepJitter(minMs: number, maxMs: number): Promise<void> {
 }
 
 /**
- * Check if client is currently paused due to rate limiting
- *
- * @param client - Client identifier
- * @param pauseState - Client pause state map
- * @returns true if client is paused, false otherwise
- */
-function isClientPaused(client: string, pauseState: ClientPauseState): boolean {
-  const pauseUntil = pauseState.get(client);
-  if (!pauseUntil) {
-    return false;
-  }
-
-  const now = new Date();
-  const pauseExpiry = new Date(pauseUntil);
-
-  if (now >= pauseExpiry) {
-    // Pause expired, remove from map
-    pauseState.delete(client);
-    return false;
-  }
-
-  return true;
-}
-
-/**
  * Pause client due to rate limiting
  *
+ * Persists pause state to database with expiry timestamp.
+ *
  * @param client - Client identifier
- * @param pauseState - Client pause state map
  * @param durationSeconds - Pause duration in seconds
  */
-function pauseClient(
-  client: string,
-  pauseState: ClientPauseState,
-  durationSeconds: number,
-): void {
+function pauseClient(client: string, durationSeconds: number): void {
   const pauseUntil = new Date(Date.now() + durationSeconds * 1000);
-  pauseState.set(client, pauseUntil.toISOString());
+  setClientPause(client, pauseUntil.toISOString(), { reason: "RATE_LIMIT" });
   logger.warn("Client paused due to rate limit", {
     client,
     pauseUntil: pauseUntil.toISOString(),
@@ -172,13 +149,9 @@ function pauseClient(
  * Execute a single query with retry logic
  *
  * @param query - The registered query to execute
- * @param pauseState - Client pause state map
  * @returns true if successful, false if failed (after retries)
  */
-async function executeQuery(
-  query: RegisteredQuery,
-  pauseState: ClientPauseState,
-): Promise<boolean> {
+async function executeQuery(query: RegisteredQuery): Promise<boolean> {
   logger.info("Executing query", {
     queryKey: query.queryKey,
     client: query.client,
@@ -246,7 +219,7 @@ async function executeQuery(
 
       // RATE_LIMIT: pause client and break (no more retries for this query)
       if (classification === "RATE_LIMIT") {
-        pauseClient(query.client, pauseState, CLIENT_PAUSE_DURATION_SECONDS);
+        pauseClient(query.client, CLIENT_PAUSE_DURATION_SECONDS);
         break;
       }
 
@@ -355,9 +328,6 @@ export async function runOnce(): Promise<{
     // Ensure query_state rows exist for all registered queries
     ensureQueryStateRows();
 
-    // Track client pause state (rate limiting)
-    const pauseState: ClientPauseState = new Map();
-
     let successCount = 0;
     let failedCount = 0;
     let skippedCount = 0;
@@ -366,8 +336,8 @@ export async function runOnce(): Promise<{
     for (let i = 0; i < ALL_QUERIES.length; i++) {
       const query = ALL_QUERIES[i];
 
-      // Check if client is paused
-      if (isClientPaused(query.client, pauseState)) {
+      // Check if client is paused (using persistent DB state)
+      if (isClientPausedDb(query.client)) {
         logger.info("Skipping query (client paused)", {
           queryKey: query.queryKey,
           client: query.client,
@@ -378,7 +348,7 @@ export async function runOnce(): Promise<{
       }
 
       // Execute query
-      const success = await executeQuery(query, pauseState);
+      const success = await executeQuery(query);
       if (success) {
         successCount++;
       } else {
@@ -415,4 +385,78 @@ export async function runOnce(): Promise<{
       logger.warn("Failed to release run lock (may not be owned)", { ownerId });
     }
   }
+}
+
+/**
+ * Run queries continuously in an infinite loop
+ *
+ * Executes runOnce() repeatedly with cycle-level sleep between iterations.
+ * Handles graceful shutdown on SIGINT/SIGTERM signals.
+ * Non-fatal errors from runOnce() are caught and logged; loop continues.
+ *
+ * This function runs forever until the process is terminated.
+ */
+export async function runForever(): Promise<void> {
+  logger.info("Starting continuous runner (forever mode)");
+
+  // Register signal handlers for graceful shutdown
+  let shutdownRequested = false;
+
+  const handleShutdown = (signal: string) => {
+    if (shutdownRequested) {
+      logger.warn("Forced shutdown - exiting immediately");
+      process.exit(1);
+    }
+    logger.info("Shutdown signal received, will stop after current cycle", {
+      signal,
+    });
+    shutdownRequested = true;
+  };
+
+  process.on("SIGINT", () => handleShutdown("SIGINT"));
+  process.on("SIGTERM", () => handleShutdown("SIGTERM"));
+
+  let cycleCount = 0;
+
+  while (!shutdownRequested) {
+    cycleCount++;
+
+    try {
+      logger.info("Starting runner cycle", { cycleCount });
+
+      const result = await runOnce();
+
+      logger.info("Runner cycle completed", {
+        cycleCount,
+        total: result.total,
+        success: result.success,
+        failed: result.failed,
+        skipped: result.skipped,
+      });
+    } catch (error) {
+      // Catch non-fatal errors from runOnce() and continue
+      logger.error("Runner cycle failed with error", {
+        cycleCount,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      // Short fallback sleep before retrying (2 minutes)
+      logger.info("Sleeping before retry after error", {
+        sleepMs: 120000,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 120000));
+      continue;
+    }
+
+    if (shutdownRequested) {
+      logger.info("Shutdown requested, exiting loop");
+      break;
+    }
+
+    // Sleep between cycles with jitter
+    await sleepJitter(CYCLE_SLEEP_MIN_MS, CYCLE_SLEEP_MAX_MS);
+  }
+
+  logger.info("Continuous runner stopped", { totalCycles: cycleCount });
 }

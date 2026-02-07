@@ -26,3 +26,14 @@ export const QUERY_JITTER_MIN_MS = 10000; // 10 seconds
  * Maximum jitter delay between queries (milliseconds)
  */
 export const QUERY_JITTER_MAX_MS = 60000; // 60 seconds
+
+/**
+ * Minimum sleep between runner cycles (milliseconds)
+ * Used in forever mode between runOnce() executions
+ */
+export const CYCLE_SLEEP_MIN_MS = 300000; // 5 minutes
+
+/**
+ * Maximum sleep between runner cycles (milliseconds)
+ */
+export const CYCLE_SLEEP_MAX_MS = 900000; // 15 minutes
