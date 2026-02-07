@@ -25,6 +25,8 @@ import * as logger from "@/logger";
  * It will refuse to read feedback outside the allowed window, even if the caller
  * forgets to check. This is a defensive measure to prevent accidental daytime reads.
  *
+ * Outside the window, returns an empty result (no throw) for safe degradation.
+ *
  * Reads only the columns we need:
  * - company_id
  * - resolution (feedback column)
@@ -40,8 +42,7 @@ import * as logger from "@/logger";
  *
  * @param client - GoogleSheetsClient instance
  * @param now - Optional Date for window check (defaults to current time, used for testing)
- * @returns CompanyFeedbackReadResult with map and counters
- * @throws Error if called outside the allowed feedback window
+ * @returns CompanyFeedbackReadResult with map and counters (empty if outside window)
  */
 export async function readCompanyFeedbackFromSheet(
   client: GoogleSheetsClient,
@@ -51,15 +52,19 @@ export async function readCompanyFeedbackFromSheet(
   // This prevents accidental daytime reads even if caller forgets to check
   const windowCheck = shouldRunFeedbackIngestion(now);
   if (!windowCheck.allowed) {
-    const error = new Error(
-      `Feedback read blocked: ${windowCheck.reason}. Feedback can only be read during the nightly window.`,
-    );
-    logger.error("Attempted to read feedback outside allowed window", {
+    // Outside window - return empty result without reading Sheets
+    logger.info("Feedback read skipped (outside nightly window)", {
       reason: windowCheck.reason,
       currentHour: windowCheck.currentHour,
       timezone: windowCheck.timezone,
     });
-    throw error;
+    return {
+      map: {},
+      totalRows: 0,
+      validRows: 0,
+      invalidRows: 0,
+      duplicateRows: 0,
+    };
   }
 
   logger.debug("Reading company feedback from sheet", {
