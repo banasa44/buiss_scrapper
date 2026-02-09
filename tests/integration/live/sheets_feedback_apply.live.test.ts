@@ -30,9 +30,10 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { GoogleSheetsClient } from "@/clients/googleSheets";
 import { processSheetsFeedback } from "@/sheets/processSheetsFeedback";
 import { applyValidatedFeedbackPlanToDb } from "@/sheets/feedbackPersistence";
-import { provisionCompaniesSheet } from "@/sheets/provisionCompaniesSheet";
+import { syncCompaniesToSheet } from "@/sheets/syncCompaniesToSheet";
 import { createTestDbSync, type TestDbHarness } from "../../helpers/testDb";
-import { COMPANY_SHEET_NAME, COMPANY_SHEET_COL_INDEX } from "@/constants";
+import type { CatalogRuntime } from "@/types/catalog";
+import { COMPANY_SHEET_NAME } from "@/constants";
 
 // Skip test if not explicitly enabled
 const isLiveTestEnabled = process.env.LIVE_SHEETS_TEST === "1";
@@ -87,7 +88,7 @@ describeIf("LIVE: Google Sheets Feedback Loop Application", () => {
       }
 
       // ========================================================================
-      // ARRANGE: Create GoogleSheetsClient and verify precondition
+      // ARRANGE: Create GoogleSheetsClient
       // ========================================================================
 
       const client = new GoogleSheetsClient({
@@ -98,40 +99,16 @@ describeIf("LIVE: Google Sheets Feedback Loop Application", () => {
         },
       });
 
-      // Provision sheet (ensures header exists)
-      await provisionCompaniesSheet(client);
-
-      // Read sheet to verify test companies exist
-      const preCheckResult = await client.readRange(
-        `${COMPANY_SHEET_NAME}!A:J`,
-      );
-      if (!preCheckResult.ok) {
-        throw new Error(
-          `Failed to read sheet for precondition check: ${preCheckResult.error?.message}`,
-        );
-      }
-
-      const preCheckValues = preCheckResult.data.values || [];
-      const preCheckDataRows = preCheckValues.slice(1); // Skip header
-
-      // Find test company rows
-      const testCompanyIds = [
-        COMPANY_ID_ACTIVE_TO_RESOLVED,
-        COMPANY_ID_RESOLVED_TO_ACTIVE,
-      ];
-
-      const existingTestCompanies = preCheckDataRows.filter((row) => {
-        const companyId = parseInt(row[0] as string, 10);
-        return testCompanyIds.includes(companyId);
-      });
-
-      if (existingTestCompanies.length !== testCompanyIds.length) {
-        throw new Error(
-          `Precondition failed: Expected ${testCompanyIds.length} test companies in sheet, found ${existingTestCompanies.length}.\n` +
-            `Test company IDs: ${testCompanyIds.join(", ")}\n` +
-            `Action required: Run LIVE-1 test first to populate test companies.`,
-        );
-      }
+      // Minimal catalog with test categories
+      const catalog: CatalogRuntime = {
+        version: "1.0.0",
+        categories: new Map([
+          ["cat_backend", { id: "cat_backend", name: "Backend", tier: 1 }],
+          ["cat_frontend", { id: "cat_frontend", name: "Frontend", tier: 1 }],
+        ]),
+        keywords: [],
+        phrases: [],
+      };
 
       // ========================================================================
       // ARRANGE: Seed DB with 2 companies in initial states
@@ -326,15 +303,45 @@ describeIf("LIVE: Google Sheets Feedback Loop Application", () => {
       expect(offersB.count).toBe(2);
 
       // ========================================================================
+      // ARRANGE: Sync test companies to Google Sheets (self-contained)
+      // ========================================================================
+
+      const syncResult = await syncCompaniesToSheet(client, catalog);
+      expect(syncResult.ok).toBe(true);
+
+      // Verify our 2 test companies exist in sheet
+      const verifyResult = await client.readRange(`${COMPANY_SHEET_NAME}!A:J`);
+      if (!verifyResult.ok) {
+        throw new Error(
+          `Failed to verify sheet after sync: ${verifyResult.error?.message}`,
+        );
+      }
+
+      const sheetValues = verifyResult.data.values || [];
+      const dataRows = sheetValues.slice(1); // Skip header
+
+      const testCompanyIds = [
+        COMPANY_ID_ACTIVE_TO_RESOLVED,
+        COMPANY_ID_RESOLVED_TO_ACTIVE,
+      ];
+
+      const existingTestCompanies = dataRows.filter((row) => {
+        const companyId = parseInt(row[0] as string, 10);
+        return testCompanyIds.includes(companyId);
+      });
+
+      expect(existingTestCompanies.length).toBe(2);
+
+      // ========================================================================
       // ARRANGE: Update Google Sheets column C for the 2 test companies
       // ========================================================================
 
       // Find row numbers for our test companies
-      const companyARow = preCheckDataRows.findIndex(
+      const companyARow = dataRows.findIndex(
         (row) =>
           parseInt(row[0] as string, 10) === COMPANY_ID_ACTIVE_TO_RESOLVED,
       );
-      const companyBRow = preCheckDataRows.findIndex(
+      const companyBRow = dataRows.findIndex(
         (row) =>
           parseInt(row[0] as string, 10) === COMPANY_ID_RESOLVED_TO_ACTIVE,
       );
