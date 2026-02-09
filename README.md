@@ -2,28 +2,86 @@
 
 InfoJobs offer scraper with scoring and aggregation pipeline.
 
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 
 - Node.js 18+ and npm
+- InfoJobs API credentials ([get them here](https://developer.infojobs.net/))
 
-### Installation
+### Setup
 
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+2. **Configure environment**
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` and set your InfoJobs credentials:
+   ```bash
+   IJ_CLIENT_ID=your_actual_client_id
+   IJ_CLIENT_SECRET=your_actual_client_secret
+   ```
+
+3. **Initialize database**
+   ```bash
+   npm run db:migrate
+   ```
+   This creates `./data/app.db` and runs all migrations.
+
+4. **Build the project**
+   ```bash
+   npm run build
+   ```
+
+### Running the Scraper
+
+**Single pass (run all queries once, then exit):**
 ```bash
-npm install
+npm run build && node dist/runnerMain.js
+# or explicitly:
+RUN_MODE=once node dist/runnerMain.js
 ```
 
-## Quickstart
-
+**Continuous mode (run forever until terminated):**
 ```bash
-cp .env.example .env
-# fill required values (InfoJobs credentials)
-npm run db:migrate
-npm run dev
+RUN_MODE=forever node dist/runnerMain.js
 ```
 
-### Development
+### Verify It's Working
+
+**Check logs:**
+- Look for `"Starting runner"` and `"Query executed successfully"` messages
+- Each query logs: `queryKey`, `status`, `elapsedMs`, `runId`, `pages_fetched`, `offers_fetched`
+
+**Inspect database:**
+```bash
+sqlite3 ./data/app.db
+```
+```sql
+-- Check ingestion runs
+SELECT id, provider, status, pages_fetched, offers_fetched, started_at FROM ingestion_runs ORDER BY id DESC LIMIT 5;
+
+-- Check scraped offers
+SELECT COUNT(*) as total_offers FROM offers;
+
+-- Check query state (M7 orchestration)
+SELECT query_key, status, last_success_at, consecutive_failures FROM query_state;
+```
+
+**Common first-run output:**
+```
+[INFO] Starting runner (single pass mode)
+[INFO] Global run lock acquired
+[INFO] Executing query { queryKey: 'infojobs:es_generic_all:...', ... }
+[INFO] Query executed successfully { status: 'SUCCESS', pages_fetched: 5, offers_fetched: 100, ... }
+[INFO] Runner completed (single pass) { total: 3, success: 3, failed: 0, skipped: 0 }
+```
+
+## Development
 
 Run the application in development mode with hot-reload support:
 
@@ -31,60 +89,35 @@ Run the application in development mode with hot-reload support:
 npm run dev
 ```
 
-### Build
-
-Compile TypeScript to JavaScript:
-
-```bash
-npm run build
-```
-
-### Production
-
-Run the compiled application:
-
-```bash
-npm start
-```
+This runs `src/main.ts` (legacy entry point). For M7 orchestration, use `runnerMain.js` as shown above.
 
 ## Configuration
 
-Copy `.env.example` to `.env`. `npm run dev` and `npm start` load `.env`
-automatically via `dotenv/config` in `src/main.ts`. Other scripts read from the
-shell environment directly (for example: `DB_PATH=./data/app.db npm run db:migrate`).
+All configuration is done via environment variables. Copy `.env.example` to `.env` and customize.
 
-**InfoJobs (required for app run)**
+**Required:**
+- `IJ_CLIENT_ID` - InfoJobs API client ID
+- `IJ_CLIENT_SECRET` - InfoJobs API client secret
 
-- `IJ_CLIENT_ID` - InfoJobs API client ID. Required for `npm run dev` and `npm start` unless credentials are injected in code.
-- `IJ_CLIENT_SECRET` - InfoJobs API client secret. Required for `npm run dev` and `npm start` unless credentials are injected in code.
+**Optional:**
+- `DB_PATH` - SQLite database path (default: `./data/app.db`)
+- `LOG_LEVEL` - Logging verbosity: `debug`, `info`, `warn`, `error` (default: `info`)
+- `RUN_MODE` - Execution mode: `once` or `forever` (default: `once`)
 
-**Database (optional)**
+**Google Sheets Integration (optional):**
 
-- `DB_PATH` - SQLite database file path. Defaults to `./data/app.db` if unset.
+Set `GOOGLE_SHEETS_SPREADSHEET_ID` to enable automated Sheets sync and feedback processing.
+When enabled, you must also provide:
+- `GOOGLE_SERVICE_ACCOUNT_EMAIL` - Service account email
+- `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` - Service account private key (PEM format with `\n` escapes)
+- `GOOGLE_PROJECT_ID` - GCP project ID (optional)
 
-**Logging (optional)**
+The service account needs `https://www.googleapis.com/auth/spreadsheets` scope and access to the target spreadsheet.
 
-- `LOG_LEVEL` - One of `debug`, `info`, `warn`, `error`. Defaults to `info`.
-
-**Google Sheets integration (optional)**
-Set `GOOGLE_SHEETS_SPREADSHEET_ID` to enable Sheets sync + feedback during ingestion. When enabled, missing/invalid credentials are fatal at init.
-The integration uses a service account with scope `https://www.googleapis.com/auth/spreadsheets`. Ensure the service account has access to the target spreadsheet.
-
-Private key format: The `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` value is automatically normalized to handle common `.env` formatting issues (quoted strings, `\n` escapes). Use the standard format with literal `\n` sequences:
-
-```
-GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgk...\n-----END PRIVATE KEY-----\n"
-```
-
-- `GOOGLE_SHEETS_SPREADSHEET_ID` - Target spreadsheet ID that enables Sheets integration.
-- `GOOGLE_SERVICE_ACCOUNT_EMAIL` - Service account email (required when Sheets integration is enabled).
-- `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` - Service account private key PEM (required when Sheets integration is enabled).
-- `GOOGLE_PROJECT_ID` - Optional. Stored for completeness; not required for auth.
-
-**Runtime toggles (documented but not wired yet)**
-
-- `STORE_RAW_JSON` - Documented in `docs/M1/01_define_db_schema.md`; currently unused in code.
-- `HTTP_MOCK_MODE` - Documented in `docs/audits/AUDIT_HTTP_MOCKING_HARNESS.md`; currently unused in code.
+**Loading:**
+- `npm run dev` and `npm start` (via `src/main.ts`) load `.env` automatically using `dotenv/config`
+- `runnerMain.js` also loads `.env` automatically
+- Other scripts (`db:migrate`, etc.) read from shell environment directly
 
 ## Project Structure
 
