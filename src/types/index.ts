@@ -13,5 +13,6 @@ export * from "./clientPause";
 export * from "./runner";
 export * from "./clients/http";
 export * from "./clients/job_offers";
+export * from "./atsDiscovery";
 // InfoJobs types are intentionally NOT exported from the global barrel.
 // Import directly from "@/types/clients/infojobs" within src/clients/infojobs/ only.
