@@ -12,3 +12,4 @@ export * from "./queries";
 export * from "./runLock";
 export * from "./runner";
 export * from "./atsDiscovery";
+export * from "./directoryDiscovery";

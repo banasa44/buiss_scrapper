@@ -249,6 +249,76 @@ export function getCompanySourcesByCompanyId(
 }
 
 /**
+ * Upsert company source keyed by (company_id, provider)
+ *
+ * Application-level upsert for use-cases where each company should have
+ * at most one source per provider (e.g., ATS discovery).
+ *
+ * Conflict strategy:
+ * - SELECT by (company_id, provider)
+ * - If exists: UPDATE provider_company_id, provider_company_url, updated_at
+ * - Else: INSERT
+ *
+ * Returns the company_source id.
+ *
+ * Note: This does NOT use the database unique constraint on
+ * (provider, provider_company_id). It enforces uniqueness at the
+ * application level on (company_id, provider) instead.
+ */
+export function upsertCompanySourceByCompanyProvider(
+  input: CompanySourceInput,
+): number {
+  const db = getDb();
+
+  // Check if source exists by (company_id, provider)
+  const existing = db
+    .prepare(
+      "SELECT id FROM company_sources WHERE company_id = ? AND provider = ?",
+    )
+    .get(input.company_id, input.provider) as CompanySource | undefined;
+
+  if (existing) {
+    // Update existing source
+    db.prepare(
+      `
+      UPDATE company_sources SET
+        provider_company_id = ?,
+        provider_company_url = ?,
+        hidden = COALESCE(?, hidden),
+        raw_json = COALESCE(?, raw_json),
+        updated_at = datetime('now')
+      WHERE id = ?
+    `,
+    ).run(
+      input.provider_company_id ?? null,
+      input.provider_company_url ?? null,
+      input.hidden ?? null,
+      input.raw_json ?? null,
+      existing.id,
+    );
+    return existing.id;
+  } else {
+    // Insert new source
+    const result = db
+      .prepare(
+        `
+      INSERT INTO company_sources (company_id, provider, provider_company_id, provider_company_url, hidden, raw_json)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `,
+      )
+      .run(
+        input.company_id,
+        input.provider,
+        input.provider_company_id ?? null,
+        input.provider_company_url ?? null,
+        input.hidden ?? null,
+        input.raw_json ?? null,
+      );
+    return result.lastInsertRowid as number;
+  }
+}
+
+/**
  * Update company aggregation signals (M4)
  *
  * Performs a partial update: only updates fields present in input.
@@ -425,4 +495,36 @@ export function listAllCompanies(options?: {
   }
 
   return db.prepare(sql).all() as Company[];
+}
+
+/**
+ * List companies needing ATS discovery
+ *
+ * Returns companies that:
+ * - Have a website_url (not null)
+ * - Do NOT have a company_source with provider 'lever' or 'greenhouse'
+ *
+ * Used by ATS discovery batch runner to find candidates.
+ *
+ * @param limit - Maximum number of companies to return (required)
+ * @returns Array of companies needing ATS discovery
+ */
+export function listCompaniesNeedingAtsDiscovery(limit: number): Company[] {
+  const db = getDb();
+
+  const sql = `
+    SELECT c.*
+    FROM companies c
+    WHERE c.website_url IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM company_sources cs
+        WHERE cs.company_id = c.id
+          AND cs.provider IN ('lever', 'greenhouse')
+      )
+    ORDER BY c.id ASC
+    LIMIT ?
+  `;
+
+  return db.prepare(sql).all(limit) as Company[];
 }
