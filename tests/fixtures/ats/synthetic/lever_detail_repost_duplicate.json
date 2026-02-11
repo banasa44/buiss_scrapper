@@ -1,0 +1,30 @@
+{
+  "additionalPlain": "Please submit your resume in English to be considered for this role.",
+  "additional": "<div><b>Please submit your resume in English to be considered for this role.</b></div>",
+  "categories": {
+    "commitment": "Full - Time",
+    "department": "Public Cloud - Offerings and Delivery",
+    "location": "Mexico - Mexico City",
+    "team": "Engagement Management",
+    "allLocations": ["Mexico - Mexico City"]
+  },
+  "createdAt": 1769799272138,
+  "descriptionPlain": "Job Profile Summary: Acts as the primary point of contact for customer billing and payment issues on assigned accounts.",
+  "description": "<div><b>Job Profile Summary:</b> Acts as the primary point of contact for customer billing and payment issues on assigned accounts.</div>",
+  "id": "synthetic-lever-repost-duplicate-2",
+  "lists": [
+    {
+      "text": "Requirements",
+      "content": "<li><b>Fluent, bilingual (Spanish and English)</b></li>"
+    }
+  ],
+  "text": "Accounts Receivable Specialist",
+  "country": "MX",
+  "workplaceType": "hybrid",
+  "opening": "",
+  "openingPlain": "",
+  "descriptionBody": "<div><b>Job Profile Summary:</b> Acts as the primary point of contact for customer billing and payment issues on assigned accounts.</div>",
+  "descriptionBodyPlain": "Job Profile Summary: Acts as the primary point of contact for customer billing and payment issues on assigned accounts.",
+  "hostedUrl": "https://jobs.lever.co/rackspace/synthetic-lever-repost-duplicate-2",
+  "applyUrl": "https://jobs.lever.co/rackspace/synthetic-lever-repost-duplicate-2/apply"
+}

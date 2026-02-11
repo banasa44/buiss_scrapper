@@ -1,0 +1,27 @@
+{
+  "absolute_url": "https://job-boards.greenhouse.io/example/jobs/44735",
+  "data_compliance": [
+    {
+      "type": "gdpr",
+      "requires_consent": false,
+      "requires_processing_consent": false,
+      "requires_retention_consent": false,
+      "retention_period": null,
+      "demographic_data_consent_applies": false
+    }
+  ],
+  "internal_job_id": 37853,
+  "location": { "name": "New York" },
+  "metadata": [
+    { "id": 5915, "name": "Employment Type", "value": "Full-time", "value_type": "single_select" },
+    { "id": 9658, "name": "Referral Bonus Amount", "value": { "unit": "USD", "amount": "5000.0" }, "value_type": "currency" }
+  ],
+  "id": 44735,
+  "updated_at": "2025-11-04T17:00:39-05:00",
+  "requisition_id": "Hendo -147",
+  "title": "Account Director ",
+  "company_name": "Democorp",
+  "first_published": null,
+  "language": "en",
+  "content": "&lt;p&gt;The &lt;strong&gt;Account&nbsp;Director (AD)&lt;/strong&gt; has responsibility for the day-to-day activity of the account. The AD’s role is to deliver quality service and ensure the Client’s expectations are met.&amp;nbsp; The AD should have knowledge of the Client’s industry, market dynamic and competitive environment. They should be heavily involved in the preparation of strategic plans for the Client and should keep the Group Account Director informed of revenue-building opportunities. In addition, the AD is responsible for the growth of the AE he/she directly supervises.&lt;/p&gt;\n&lt;p&gt;&amp;nbsp;&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;MAJOR RESPONSIBILITIES&lt;/str ong&gt;&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;Account Leadership and Ownership&lt;/strong&gt;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li class=\"even\"&gt;\n&lt;p&gt;Responsible for the day-to-day activity of the account&lt;/p&gt;\n&lt;/li&gt;\n&lt;li class=\"odd\"&gt;\n&lt;p&gt;Develop a strong relationship with his/her direct Client contacts&lt;/p&gt;\n&lt;/li&gt;\n&lt;li class=\"even\"&gt;\n&lt;p&gt;Demonstrate excellence leadership internally and externally&lt;/p&gt;\n&lt;/li&gt;\n&lt;li class=\"odd\"&gt;\n&lt;p&gt;Provide a professional, comfortable, productive and fun environment&lt;/p&gt;\n&lt;/li&gt;\n&lt;li class=\"even\"&gt;\n&lt;p&gt;Strive for excellence, professionalism and quality&lt;/p&gt;\n&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;&amp;nbsp;&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;&amp;nbsp;Strategy, Planning, Creative and Media&lt;/strong&gt;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li class=\"odd\"&gt;\n&lt;p&gt;Assist in the development of the brand strategies and strategic plan&lt;/p&gt;\n&lt;/li&gt;\n&lt;li class=\"even\"&gt;\n&lt;p&gt;Direct preparation of Agency analyses on competitive and market landscape&lt;/p&gt;\n&lt;/li&gt;\n&lt;li class=\"odd\"&gt;\n&lt;p&gt;Identify trends, launch new products, understand legal and social environment based on Client category&lt;/p&gt;\n&lt;/li&gt;\n&lt;li class=\"even\"&gt;\n&lt;p&gt;Participate in the planning process; external and internal brainstorming sessions&lt;/p&gt;\n&lt;/li&gt;\n&lt;li class=\"odd\"&gt;\n&lt;p&gt;Facilitate and oversee all market research, agency recommendations and POVs, as well as major market research and planning presentations made by Account Planner&lt;/p&gt;\n&lt;/li&gt;\n&lt;li class=\"even\"&gt;\n&lt;p&gt;Work closely with integrated partners to ensure that Client needs and objectives are met&lt;/p&gt;\n&lt;/li&gt;\n&lt;li class=\"odd\"&gt;\n&lt;p&gt;Prepare and review all major presentations by media department to Clients&lt;/p&gt;\n&lt;/li&gt;\n&lt;li class=\"even\"&gt;\n&lt;p&gt;Direct preparation of creative briefings to kick off creative development&lt;/p&gt;\n&lt;/li&gt;\n&lt;li class=\"odd\"&gt;\n&lt;p&gt;Facilitate and oversee the information flowthrough the creative and production processes&lt;/p&gt;\n&lt;/li&gt;\n&lt;li class=\"even\"&gt;\n&lt;p&gt;Ensure that quality standards are met for all the Client’s creative needs&lt;/p&gt;\n&lt;/li&gt;\n&lt;li class=\"odd\"&gt;\n&lt;p&gt;Supervise production specifications to meet Client expectations and Agency standards&lt;/p&gt;\n&lt;/li&gt;\n&lt;/ul&gt;"
+}

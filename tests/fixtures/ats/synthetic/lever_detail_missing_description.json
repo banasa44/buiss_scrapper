@@ -1,0 +1,30 @@
+{
+  "additionalPlain": "",
+  "additional": "",
+  "categories": {
+    "commitment": "Full - Time",
+    "department": "Public Cloud - Offerings and Delivery",
+    "location": "Mexico - Mexico City",
+    "team": "Engagement Management",
+    "allLocations": ["Mexico - Mexico City"]
+  },
+  "createdAt": 1769799272138,
+  "descriptionPlain": "",
+  "description": "",
+  "id": "synthetic-lever-missing-description-1",
+  "lists": [
+    {
+      "text": "Requirements",
+      "content": "<li><b>Fluent, bilingual (Spanish and English)</b></li>"
+    }
+  ],
+  "text": "Accounts Receivable Specialist",
+  "country": "MX",
+  "workplaceType": "hybrid",
+  "opening": "",
+  "openingPlain": "",
+  "descriptionBody": "",
+  "descriptionBodyPlain": "",
+  "hostedUrl": "https://jobs.lever.co/rackspace/synthetic-lever-missing-description-1",
+  "applyUrl": "https://jobs.lever.co/rackspace/synthetic-lever-missing-description-1/apply"
+}

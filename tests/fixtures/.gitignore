@@ -1,0 +1,3 @@
+# Allow fixture payloads under tests/fixtures even though root ignores *.json
+!**/*.json
+!**/*.html
