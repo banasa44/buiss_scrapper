@@ -3,3 +3,4 @@
  */
 
 export * from "./clients/jobOffersClient";
+export * from "./companySources";

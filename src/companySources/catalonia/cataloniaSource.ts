@@ -17,104 +17,9 @@ import {
   extractWebsiteDomain,
 } from "@/utils/identity/companyIdentity";
 import type { CompanyInput } from "@/types";
+import type { CompanyDirectorySource } from "@/interfaces";
 import * as logger from "@/logger";
-
-/**
- * Known social/aggregator domains to exclude from company websites
- * These are not actual company websites
- */
-const EXCLUDED_DOMAINS = new Set([
-  "linkedin.com",
-  "twitter.com",
-  "facebook.com",
-  "instagram.com",
-  "youtube.com",
-  "github.com",
-  "startupshub.catalonia.com",
-]);
-
-/**
- * Anchor link candidate extracted from HTML
- */
-type AnchorCandidate = {
-  href: string;
-  text: string;
-};
-
-/**
- * Extract all anchor links from HTML using regex
- * Matches: <a href="...">text</a> and <a href='...'>text</a>
- *
- * Note: This is intentionally simple and deterministic.
- * It will miss complex cases (multiline, attributes between href and >, etc.),
- * but that's acceptable for bounded discovery.
- */
-function extractAnchors(html: string): AnchorCandidate[] {
-  const anchors: AnchorCandidate[] = [];
-
-  // Match <a ...href="..."...>text</a> or <a ...href='...'...>text</a>
-  // Non-greedy matching to avoid issues with multiple anchors on one line
-  const anchorPattern = /<a\s+[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi;
-
-  let match: RegExpExecArray | null;
-  while ((match = anchorPattern.exec(html)) !== null) {
-    const href = match[1].trim();
-    const text = match[2]
-      .replace(/<[^>]+>/g, "") // Strip inner HTML tags
-      .trim();
-
-    if (href && text) {
-      anchors.push({ href, text });
-    }
-  }
-
-  return anchors;
-}
-
-/**
- * Check if a URL should be excluded based on tunables and heuristics
- */
-function shouldExcludeUrl(url: string, baseHostname: string): boolean {
-  const { MAX_URL_LENGTH, IGNORE_EXTENSIONS } = DIRECTORY_DISCOVERY.TUNABLES;
-
-  // Check URL length
-  if (url.length > MAX_URL_LENGTH) {
-    return true;
-  }
-
-  // Check file extensions
-  const urlLower = url.toLowerCase();
-  if (IGNORE_EXTENSIONS.some((ext) => urlLower.endsWith(ext))) {
-    return true;
-  }
-
-  // Exclude non-http(s) protocols
-  if (
-    !url.startsWith("http://") &&
-    !url.startsWith("https://") &&
-    !url.startsWith("/")
-  ) {
-    return true;
-  }
-
-  // Extract domain
-  const domain = extractWebsiteDomain(url);
-  if (!domain) {
-    return true;
-  }
-
-  // Exclude internal links (same domain as source)
-  if (domain === baseHostname) {
-    return true;
-  }
-
-  // Exclude known social/aggregator domains
-  if (EXCLUDED_DOMAINS.has(domain)) {
-    return true;
-  }
-
-  return false;
-}
+import { extractAnchors, shouldExcludeUrl } from "../shared";
 
 /**
  * Fetch companies from Catalonia Startups Hub directory
@@ -238,3 +143,17 @@ export async function fetchCataloniaCompanies(): Promise<CompanyInput[]> {
 
   return companies;
 }
+
+/**
+ * Catalonia directory source object
+ *
+ * Implements CompanyDirectorySource interface to provide a standardized
+ * way to interact with the Catalonia startup directory.
+ */
+export const cataloniaDirectorySource: CompanyDirectorySource = {
+  id: "CATALONIA",
+
+  seedUrl: DIRECTORY_DISCOVERY.SEED_URLS.CATALONIA,
+
+  fetchCompanies: fetchCataloniaCompanies,
+};

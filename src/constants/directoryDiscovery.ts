@@ -36,5 +36,19 @@ export const DIRECTORY_DISCOVERY = {
      * File extensions to ignore when extracting URLs
      */
     IGNORE_EXTENSIONS: [".pdf", ".jpg", ".jpeg", ".png", ".zip", ".gif"],
+
+    /**
+     * Domains to exclude when discovering companies
+     * (social networks, aggregators, and directory-specific internal domains)
+     */
+    EXCLUDED_DOMAINS: [
+      "linkedin.com",
+      "twitter.com",
+      "facebook.com",
+      "instagram.com",
+      "youtube.com",
+      "github.com",
+      "startupshub.catalonia.com",
+    ],
   },
 } as const;
