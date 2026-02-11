@@ -37,3 +37,9 @@ export const CYCLE_SLEEP_MIN_MS = 300000; // 5 minutes
  * Maximum sleep between runner cycles (milliseconds)
  */
 export const CYCLE_SLEEP_MAX_MS = 900000; // 15 minutes
+
+/**
+ * Default batch limit for ATS discovery runner
+ * Maximum number of companies to process in a single batch
+ */
+export const ATS_DISCOVERY_BATCH_LIMIT = 100;
