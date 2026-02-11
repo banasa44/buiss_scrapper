@@ -42,8 +42,20 @@ export interface DirectoryPipelineConfig {
    * URL path patterns that identify company detail pages
    * Only internal URLs matching any of these patterns will be fetched
    * Example: ["/emprendedores/empresa/detalle/"] for Madri+d
+   *
+   * Ignored if isDetailUrl is provided (custom predicate takes precedence)
    */
   detailPathPatterns: string[];
+
+  /**
+   * Optional custom predicate to determine if a URL is a detail page
+   * If provided, this overrides detailPathPatterns matching
+   *
+   * @param url - Absolute URL to check
+   * @param baseHostname - Base hostname for same-host verification
+   * @returns true if URL should be treated as a detail page
+   */
+  isDetailUrl?: (url: string, baseHostname: string) => boolean;
 
   /**
    * Maximum number of detail pages to fetch
@@ -91,6 +103,7 @@ export async function fetchCompaniesViaDetailPages(
     sourceId,
     seedUrl,
     detailPathPatterns,
+    isDetailUrl,
     maxDetailPages,
     maxWebsitesPerDetail,
     maxCompanies,
@@ -140,18 +153,24 @@ export async function fetchCompaniesViaDetailPages(
       continue;
     }
 
-    // Check if URL matches any detail page pattern
-    const matchesPattern = detailPathPatterns.some((pattern) =>
-      absoluteUrl.includes(pattern),
-    );
+    // Determine if this is a detail page using custom predicate or pattern matching
+    let isDetail: boolean;
 
-    if (!matchesPattern) {
-      continue;
+    if (isDetailUrl) {
+      // Use custom predicate (takes precedence)
+      isDetail = isDetailUrl(absoluteUrl, baseHostname);
+    } else {
+      // Fallback to pattern matching
+      const matchesPattern = detailPathPatterns.some((pattern) =>
+        absoluteUrl.includes(pattern),
+      );
+
+      // Verify it's same-host (internal detail page)
+      const detailHostname = extractWebsiteDomain(absoluteUrl);
+      isDetail = matchesPattern && detailHostname === baseHostname;
     }
 
-    // Verify it's same-host (internal detail page)
-    const detailHostname = extractWebsiteDomain(absoluteUrl);
-    if (detailHostname !== baseHostname) {
+    if (!isDetail) {
       continue;
     }
 

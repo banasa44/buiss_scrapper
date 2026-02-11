@@ -19,3 +19,4 @@ export {
   ingestCataloniaCompanies,
 } from "./catalonia";
 export { madrimasdDirectorySource, fetchMadrimasdCompanies } from "./madrimasd";
+export { lanzaderaDirectorySource, fetchLanzaderaCompanies } from "./lanzadera";
