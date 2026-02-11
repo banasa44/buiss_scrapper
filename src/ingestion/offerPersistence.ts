@@ -36,7 +36,7 @@ import {
   detectRepostDuplicate,
   computeOfferFingerprint,
 } from "@/signal/repost";
-import { RESOLVED_RESOLUTIONS } from "@/constants";
+import { RESOLVED_RESOLUTIONS, ATS_PROVIDERS } from "@/constants";
 import { persistCompanyAndSource } from "./companyPersistence";
 import * as logger from "@/logger";
 
@@ -111,6 +111,7 @@ function buildOfferInput(
  * Persist an offer to the database
  *
  * This function:
+ * 0. For ATS sources: validates that offer has a non-empty description (rejects summaries without details)
  * 1. Persists the company (and provider source link) first
  * 2. If company is unidentifiable, skips the offer (returns failure result)
  * 3. Computes effective "last seen at" timestamp
@@ -129,6 +130,25 @@ function buildOfferInput(
  */
 export function persistOffer(input: PersistOfferInput): OfferPersistResult {
   const { offer, provider, companyId: providedCompanyId } = input;
+
+  // Step 0: ATS-only hardening - require description for ATS sources
+  // ATS sources (Lever, Greenhouse) must provide full details with description
+  // InfoJobs and other marketplace sources are exempt from this check
+  const isAtsSource = (ATS_PROVIDERS as readonly string[]).includes(provider);
+  if (isAtsSource) {
+    const hasDescription =
+      "description" in offer &&
+      offer.description &&
+      offer.description.trim().length > 0;
+    if (!hasDescription) {
+      logger.debug("ATS offer skipped: missing description", {
+        provider,
+        offerId: offer.ref.id,
+        hasDescriptionField: "description" in offer,
+      });
+      return { ok: false, reason: "missing_description" };
+    }
+  }
 
   // Step 1: Determine companyId (use provided companyId or discover from company data)
   let companyId: number;

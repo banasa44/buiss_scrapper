@@ -38,6 +38,7 @@ export type OfferPersistResult =
   | { ok: false; reason: "company_unidentifiable" }
   | { ok: false; reason: "company_resolved"; companyId: number }
   | { ok: false; reason: "db_error"; companyId: number }
+  | { ok: false; reason: "missing_description" }
   | {
       ok: true;
       reason: "repost_duplicate";

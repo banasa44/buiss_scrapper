@@ -45,6 +45,8 @@ export function ingestOffers(input: IngestOffersInput): IngestOffersResult {
   // Local counters
   let upserted = 0;
   let skipped = 0;
+  let skippedMissingDescription = 0;
+  let skippedRepostDuplicate = 0;
   let failed = 0;
   let duplicates = 0;
 
@@ -56,9 +58,12 @@ export function ingestOffers(input: IngestOffersInput): IngestOffersResult {
       if ("reason" in result && result.reason === "repost_duplicate") {
         // Repost duplicate detected - no new offer inserted
         duplicates++;
+        skippedRepostDuplicate++;
         if (acc) {
           acc.counters.offers_duplicates =
             (acc.counters.offers_duplicates ?? 0) + 1;
+          acc.counters.offers_skipped_repost_duplicate =
+            (acc.counters.offers_skipped_repost_duplicate ?? 0) + 1;
         }
 
         // Track affected company for aggregation (repost_count changed)
@@ -116,6 +121,16 @@ export function ingestOffers(input: IngestOffersInput): IngestOffersResult {
         provider,
         offerId: offer.ref.id,
       });
+    } else if (result.reason === "missing_description") {
+      // ATS-only: offer missing required description field
+      skipped++;
+      skippedMissingDescription++;
+      if (acc) {
+        acc.counters.offers_skipped = (acc.counters.offers_skipped ?? 0) + 1;
+        acc.counters.offers_skipped_missing_description =
+          (acc.counters.offers_skipped_missing_description ?? 0) + 1;
+      }
+      // Note: persistOffer already logs the skip at debug level
     } else if (result.reason === "company_resolved") {
       // M6: company is resolved, skip offer ingestion
       skipped++;

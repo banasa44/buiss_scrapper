@@ -234,6 +234,8 @@ export type RunCounters = {
   offers_fetched?: number | null;
   offers_upserted?: number | null;
   offers_skipped?: number | null;
+  offers_skipped_missing_description?: number | null;
+  offers_skipped_repost_duplicate?: number | null;
   offers_failed?: number | null;
   offers_duplicates?: number | null;
   errors_count?: number | null;

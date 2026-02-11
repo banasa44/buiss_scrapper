@@ -153,6 +153,9 @@ export async function runLeverPipeline(options?: {
       errors,
       companiesAggregated: aggregationResult.ok,
       companiesFailed: aggregationResult.failed,
+      skippedMissingDescription:
+        acc.counters.offers_skipped_missing_description ?? 0,
+      skippedRepostDuplicate: acc.counters.offers_skipped_repost_duplicate ?? 0,
     });
 
     // Store counters for return
