@@ -49,3 +49,9 @@ export const ATS_DISCOVERY_BATCH_LIMIT = 100;
  * Maximum number of Lever company_sources to process in a single run
  */
 export const LEVER_INGESTION_DEFAULT_LIMIT = 50;
+
+/**
+ * Default limit for Greenhouse ATS ingestion pipeline
+ * Maximum number of Greenhouse company_sources to process in a single run
+ */
+export const GREENHOUSE_INGESTION_DEFAULT_LIMIT = 50;
