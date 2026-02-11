@@ -224,19 +224,30 @@ X6LloxV8OuZpUXhq0/ihp0JY
           ok: true,
           status: 200,
           json: async () => ({
-            range: "Companies!A1:C5",
+            range: "Companies!A1:J5",
             majorDimension: "ROWS",
             values: [
               // Header row (skipped by feedbackReader)
-              ["company_id", "resolution", "company_name"],
+              [
+                "ID Empresa",
+                "Empresa",
+                "Resolución",
+                "Score máx.",
+                "Ofertas fuertes",
+                "Ofertas únicas",
+                "Actividad publicaciones",
+                "Score fuerte medio",
+                "Categoría top",
+                "Última señal fuerte",
+              ],
               // Company A: PENDING → ACCEPTED (destructive)
-              [String(companyAId), "ACCEPTED", "Acme Corp"],
+              [String(companyAId), "Acme Corp", "ACCEPTED", "", "", "", "", "", "", ""],
               // Company B: ACCEPTED → PENDING (reversal)
-              [String(companyBId), "PENDING", "Beta Ltd"],
+              [String(companyBId), "Beta Ltd", "PENDING", "", "", "", "", "", "", ""],
               // Unknown company (should be skipped)
-              ["999", "REJECTED", "Unknown Company"],
+              ["999", "Unknown Company", "REJECTED", "", "", "", "", "", "", ""],
               // Invalid company_id (should be skipped)
-              ["invalid_id", "PENDING", "Bad Row"],
+              ["invalid_id", "Bad Row", "PENDING", "", "", "", "", "", "", ""],
             ],
           }),
         };

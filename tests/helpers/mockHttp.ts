@@ -13,9 +13,43 @@
  */
 
 import type { HttpRequest } from "@/types";
+import { HttpError } from "@/clients/http";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 type RouteKey = string; // "METHOD URL"
 type RouteHandler = (req: HttpRequest) => Promise<unknown>;
+
+type MockHttpHeaders = Record<string, string>;
+
+type MockHttpReply = {
+  __mockHttpReply: true;
+  status: number;
+  body: unknown;
+  headers?: MockHttpHeaders;
+};
+
+function asReply(input: {
+  status: number;
+  body: unknown;
+  headers?: MockHttpHeaders;
+}): MockHttpReply {
+  return {
+    __mockHttpReply: true,
+    status: input.status,
+    body: input.body,
+    headers: input.headers,
+  };
+}
+
+function isReply(value: unknown): value is MockHttpReply {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "__mockHttpReply" in value &&
+    (value as { __mockHttpReply?: unknown }).__mockHttpReply === true
+  );
+}
 
 /**
  * Mock HTTP client for testing
@@ -28,6 +62,22 @@ export interface MockHttp {
    * @param response - Response data (will be returned as-is)
    */
   on(method: string, url: string, response: unknown): void;
+
+  /**
+   * Register a mock response with explicit status/body/headers
+   * @param method - HTTP method (GET, POST, etc.)
+   * @param url - Full URL or URL pattern
+   * @param response - Structured response
+   */
+  onResponse(
+    method: string,
+    url: string,
+    response: {
+      status: number;
+      body: unknown;
+      headers?: MockHttpHeaders;
+    },
+  ): void;
 
   /**
    * Register a custom handler for a given method+url
@@ -54,6 +104,17 @@ export interface MockHttp {
 }
 
 /**
+ * Load fixture content from tests/fixtures as UTF-8 text
+ *
+ * @param relativePath - Path relative to tests/fixtures (e.g. "ats/lever/list.json")
+ * @returns Raw fixture file content as string
+ */
+export function loadFixtureText(relativePath: string): string {
+  const fullPath = join(process.cwd(), "tests", "fixtures", relativePath);
+  return readFileSync(fullPath, "utf-8");
+}
+
+/**
  * Build route key from method and URL (ignores query params)
  */
 function buildRouteKey(method: string, url: string): RouteKey {
@@ -71,7 +132,25 @@ export function createMockHttp(): MockHttp {
 
   const on = (method: string, url: string, response: unknown): void => {
     const key = buildRouteKey(method, url);
-    routes.set(key, async () => response);
+    routes.set(key, async () =>
+      asReply({
+        status: 200,
+        body: response,
+      }),
+    );
+  };
+
+  const onResponse = (
+    method: string,
+    url: string,
+    response: {
+      status: number;
+      body: unknown;
+      headers?: MockHttpHeaders;
+    },
+  ): void => {
+    const key = buildRouteKey(method, url);
+    routes.set(key, async () => asReply(response));
   };
 
   const onCustom = (
@@ -102,7 +181,28 @@ export function createMockHttp(): MockHttp {
 
     // Execute handler
     const response = await handler(req);
-    return response as T;
+
+    if (!isReply(response)) {
+      // Backward-compatible default for custom handlers
+      return response as T;
+    }
+
+    if (response.status >= 200 && response.status < 300) {
+      return response.body as T;
+    }
+
+    const bodySnippet =
+      typeof response.body === "string"
+        ? response.body
+        : JSON.stringify(response.body);
+
+    throw new HttpError({
+      status: response.status,
+      statusText: "Mock Response",
+      url: req.url,
+      bodySnippet,
+      headers: response.headers ? new Headers(response.headers) : undefined,
+    });
   };
 
   const getRecordedRequests = (): HttpRequest[] => {
@@ -116,6 +216,7 @@ export function createMockHttp(): MockHttp {
 
   return {
     on,
+    onResponse,
     onCustom,
     request,
     getRecordedRequests,
