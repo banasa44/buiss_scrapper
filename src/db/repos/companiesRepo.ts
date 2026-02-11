@@ -249,6 +249,39 @@ export function getCompanySourcesByCompanyId(
 }
 
 /**
+ * List company sources by provider for ingestion
+ *
+ * Returns company sources that:
+ * - Match the specified provider
+ * - Have a provider_company_id (required for ingestion)
+ * - Are not hidden (hidden IS NULL OR hidden = 0)
+ *
+ * Used by ATS ingestion pipelines to fetch companies to process.
+ *
+ * @param provider - Provider identifier (e.g., "lever", "greenhouse")
+ * @param limit - Maximum number of sources to return (required)
+ * @returns Array of company sources ready for ingestion
+ */
+export function listCompanySourcesByProvider(
+  provider: string,
+  limit: number,
+): CompanySource[] {
+  const db = getDb();
+
+  const sql = `
+    SELECT *
+    FROM company_sources
+    WHERE provider = ?
+      AND provider_company_id IS NOT NULL
+      AND (hidden IS NULL OR hidden = 0)
+    ORDER BY id ASC
+    LIMIT ?
+  `;
+
+  return db.prepare(sql).all(provider, limit) as CompanySource[];
+}
+
+/**
  * Upsert company source keyed by (company_id, provider)
  *
  * Application-level upsert for use-cases where each company should have

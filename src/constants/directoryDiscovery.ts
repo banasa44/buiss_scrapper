@@ -50,5 +50,37 @@ export const DIRECTORY_DISCOVERY = {
       "github.com",
       "startupshub.catalonia.com",
     ],
+
+    /**
+     * Configuration for multi-step directory discovery
+     * (listing page → detail pages → company websites)
+     */
+    DETAIL_FETCH: {
+      /**
+       * Maximum number of detail pages to fetch per source
+       * (defaults to same as MAX_COMPANIES_PER_SOURCE)
+       */
+      MAX_DETAIL_PAGES: 50,
+
+      /**
+       * URL path patterns that identify company detail pages
+       * Each source can specify which internal paths to follow
+       */
+      DETAIL_PATH_PATTERNS: {
+        MADRIMASD: "/emprendedores/empresa/detalle/",
+      },
+
+      /**
+       * Enable fetching internal detail pages to extract external websites
+       * Set to false to only extract direct external links from listing pages
+       */
+      ALLOW_INTERNAL_DETAIL_FETCH: true,
+
+      /**
+       * Maximum number of external website URLs to extract per detail page
+       * (prevents unbounded extraction, typically 1 for company directories)
+       */
+      MAX_WEBSITES_PER_DETAIL: 1,
+    },
   },
 } as const;
