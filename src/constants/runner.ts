@@ -43,3 +43,9 @@ export const CYCLE_SLEEP_MAX_MS = 900000; // 15 minutes
  * Maximum number of companies to process in a single batch
  */
 export const ATS_DISCOVERY_BATCH_LIMIT = 100;
+
+/**
+ * Default limit for Lever ATS ingestion pipeline
+ * Maximum number of Lever company_sources to process in a single run
+ */
+export const LEVER_INGESTION_DEFAULT_LIMIT = 50;

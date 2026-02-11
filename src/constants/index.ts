@@ -1,6 +1,7 @@
 export * from "./logger";
 export * from "./clients/http";
 export * from "./clients/infojobs";
+export * from "./clients/lever";
 export * from "./clients/googleSheets";
 export * from "./textNormalization";
 export * from "./catalog";

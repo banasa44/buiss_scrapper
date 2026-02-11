@@ -50,10 +50,18 @@ export type OfferPersistResult =
 /**
  * Input for persisting an offer
  * Accepts either JobOfferSummary or JobOfferDetail (detail extends summary)
+ *
+ * For ATS sources (Lever, Greenhouse), companyId can be provided to bypass
+ * company discovery (since company_sources already links tenants to companies).
  */
 export type PersistOfferInput = {
   offer: JobOfferSummary | JobOfferDetail;
   provider: Provider;
+  /**
+   * Optional company ID to use for the offer (bypasses company discovery)
+   * When provided, the offer is directly linked to this companyId
+   */
+  companyId?: number;
 };
 
 import type { RunCounters } from "@/types/db";
@@ -75,6 +83,11 @@ export type IngestOffersInput = {
   acc?: RunAccumulatorLike;
   /** Optional set to collect affected company IDs (for M4 aggregation) */
   affectedCompanyIds?: Set<number>;
+  /**
+   * Optional company ID for ATS sources where company is pre-determined
+   * When provided, all offers in the batch are linked to this companyId
+   */
+  companyId?: number;
 };
 
 /**

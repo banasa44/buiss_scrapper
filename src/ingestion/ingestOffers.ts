@@ -37,7 +37,7 @@ import * as logger from "@/logger";
  * @returns Summary with processed, upserted, skipped, failed counts and affected companies
  */
 export function ingestOffers(input: IngestOffersInput): IngestOffersResult {
-  const { provider, offers, acc, affectedCompanyIds } = input;
+  const { provider, offers, acc, affectedCompanyIds, companyId } = input;
 
   // Load catalog once for the entire batch
   const catalog = loadCatalog();
@@ -49,7 +49,7 @@ export function ingestOffers(input: IngestOffersInput): IngestOffersResult {
   let duplicates = 0;
 
   for (const offer of offers) {
-    const result = persistOffer({ offer, provider });
+    const result = persistOffer({ offer, provider, companyId });
 
     if (result.ok) {
       // Check if this is a repost duplicate or a normal insert/update

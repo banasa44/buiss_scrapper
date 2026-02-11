@@ -128,25 +128,38 @@ function buildOfferInput(
  * @returns Discriminated result: ok with offerId, repost, or not ok with reason
  */
 export function persistOffer(input: PersistOfferInput): OfferPersistResult {
-  const { offer, provider } = input;
+  const { offer, provider, companyId: providedCompanyId } = input;
 
-  // Step 1: Persist company first
-  const companyResult = persistCompanyAndSource({
-    company: offer.company,
-    provider,
-    providerCompanyUrl: undefined, // Not available from offer; could be enriched later
-  });
+  // Step 1: Determine companyId (use provided companyId or discover from company data)
+  let companyId: number;
 
-  if (!companyResult.ok) {
-    logger.debug("Offer skipped: company unidentifiable", {
+  if (providedCompanyId !== undefined) {
+    // ATS sources: companyId is already known from company_sources
+    companyId = providedCompanyId;
+    logger.debug("Using provided companyId (ATS source)", {
       provider,
       offerId: offer.ref.id,
-      companyName: offer.company.name,
+      companyId,
     });
-    return { ok: false, reason: "company_unidentifiable" };
-  }
+  } else {
+    // Marketplace sources: discover company from offer payload
+    const companyResult = persistCompanyAndSource({
+      company: offer.company,
+      provider,
+      providerCompanyUrl: undefined, // Not available from offer; could be enriched later
+    });
 
-  const { companyId } = companyResult;
+    if (!companyResult.ok) {
+      logger.debug("Offer skipped: company unidentifiable", {
+        provider,
+        offerId: offer.ref.id,
+        companyName: offer.company.name,
+      });
+      return { ok: false, reason: "company_unidentifiable" };
+    }
+
+    companyId = companyResult.companyId;
+  }
 
   // Step 1.5: M6 ingestion protection - skip offers for resolved companies
   // If company is resolved (ACCEPTED/REJECTED/ALREADY_REVOLUT), do not ingest offers
