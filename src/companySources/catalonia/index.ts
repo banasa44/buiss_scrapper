@@ -6,4 +6,3 @@ export {
   cataloniaDirectorySource,
   fetchCataloniaCompanies,
 } from "./cataloniaSource";
-export { ingestCataloniaCompanies } from "./ingest";

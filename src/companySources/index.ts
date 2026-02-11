@@ -13,10 +13,7 @@
  * - Ingestion/persistence (ingestion module)
  */
 
-export {
-  cataloniaDirectorySource,
-  fetchCataloniaCompanies,
-  ingestCataloniaCompanies,
-} from "./catalonia";
+export { cataloniaDirectorySource, fetchCataloniaCompanies } from "./catalonia";
 export { madrimasdDirectorySource, fetchMadrimasdCompanies } from "./madrimasd";
 export { lanzaderaDirectorySource, fetchLanzaderaCompanies } from "./lanzadera";
+export { ingestDirectorySources } from "./ingestDirectorySources";
