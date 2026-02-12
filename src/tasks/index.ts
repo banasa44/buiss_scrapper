@@ -13,6 +13,7 @@ import { DirectoryIngestionTask } from "./directoryIngestionTask";
 import { AtsDiscoveryTask } from "./atsDiscoveryTask";
 import { LeverIngestionTask } from "./leverIngestionTask";
 import { GreenhouseIngestionTask } from "./greenhouseIngestionTask";
+import { SheetsSyncTask } from "./sheetsSyncTask";
 
 /**
  * All registered tasks across pipeline stages
@@ -22,7 +23,7 @@ import { GreenhouseIngestionTask } from "./greenhouseIngestionTask";
  * - [x] ATS discovery task
  * - [x] Lever ingestion task
  * - [x] Greenhouse ingestion task
- * - [ ] Sheets sync task
+ * - [x] Sheets sync task
  * - [ ] Feedback apply task
  *
  * Tasks will be executed sequentially in array order.
@@ -32,6 +33,7 @@ export const ALL_TASKS: Task[] = [
   AtsDiscoveryTask,
   LeverIngestionTask,
   GreenhouseIngestionTask,
+  SheetsSyncTask,
 ];
 
 /**

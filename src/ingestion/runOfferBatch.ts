@@ -19,13 +19,11 @@ import { withRun } from "./runLifecycle";
 import { ingestOffers } from "./ingestOffers";
 import { aggregateCompaniesAndPersist } from "./aggregateCompanies";
 import {
-  syncCompaniesToSheet,
   processSheetsFeedback,
   applyValidatedFeedbackPlanToDb,
 } from "@/sheets";
 import { GoogleSheetsClient } from "@/clients/googleSheets";
 import { GOOGLE_SHEETS_SPREADSHEET_ID_ENV } from "@/constants/clients/googleSheets";
-import { loadCatalog } from "@/catalog";
 import * as logger from "@/logger";
 
 /**
@@ -105,28 +103,21 @@ export async function runOfferBatchIngestion(
         }
 
         try {
-          const catalog = loadCatalog();
-          const sheetsResult = await syncCompaniesToSheet(
-            sheetsClient,
-            catalog,
-          );
+          // ========================================================================
+          // NOTE: Sheets sync now handled by SheetsSyncTask (task-based migration)
+          // ========================================================================
+          // The syncCompaniesToSheet call previously here has been migrated to
+          // SheetsSyncTask, which runs in the task pipeline phase (before queries).
+          //
+          // This prevents double-execution:
+          // - Task phase: SheetsSyncTask syncs companies to Sheets
+          // - Query phase: Feedback loop (below) reads from already-synced Sheet
+          //
+          // Legacy sync code removed to eliminate duplication.
+          // For context, see: src/tasks/sheetsSyncTask.ts
+          // ========================================================================
 
-          if (sheetsResult.ok) {
-            logger.info("Sheets sync completed", {
-              appendedCount: sheetsResult.appendedCount,
-              updatedCount: sheetsResult.updatedCount,
-              skippedCount: sheetsResult.skippedCount,
-            });
-          } else {
-            logger.warn("Sheets sync completed with errors", {
-              appendedCount: sheetsResult.appendedCount,
-              updatedCount: sheetsResult.updatedCount,
-              skippedCount: sheetsResult.skippedCount,
-              errors: sheetsResult.errors,
-            });
-          }
-
-          // M6: Process feedback loop immediately after Sheets sync
+          // M6: Process feedback loop (reads from Sheet synced by SheetsSyncTask)
           // Nightly gated (03:00-06:00), best-effort error handling
           try {
             const feedbackResult = await processSheetsFeedback(sheetsClient);
