@@ -69,32 +69,31 @@ function applyMigration(db: any, filename: string): void {
 
 /**
  * Run all pending migrations
+ *
+ * NOTE: This function does NOT close the database connection.
+ * The caller is responsible for managing the DB lifecycle.
  */
 export function runMigrations(): void {
   const db = openDb();
 
-  try {
-    ensureMigrationsTable(db);
+  ensureMigrationsTable(db);
 
-    const appliedMigrations = getAppliedMigrations(db);
-    const pendingMigrations = getPendingMigrations(appliedMigrations);
+  const appliedMigrations = getAppliedMigrations(db);
+  const pendingMigrations = getPendingMigrations(appliedMigrations);
 
-    if (pendingMigrations.length === 0) {
-      console.log("No pending migrations.");
-      return;
-    }
-
-    console.log(`Applying ${pendingMigrations.length} migration(s)...`);
-
-    for (const migration of pendingMigrations) {
-      console.log(`  Applying ${migration}...`);
-      applyMigration(db, migration);
-    }
-
-    console.log("Migrations complete.");
-  } finally {
-    closeDb();
+  if (pendingMigrations.length === 0) {
+    console.log("No pending migrations.");
+    return;
   }
+
+  console.log(`Applying ${pendingMigrations.length} migration(s)...`);
+
+  for (const migration of pendingMigrations) {
+    console.log(`  Applying ${migration}...`);
+    applyMigration(db, migration);
+  }
+
+  console.log("Migrations complete.");
 }
 
 /**
@@ -108,7 +107,13 @@ export function smokeTest(): void {
 
 /**
  * CLI entrypoint
+ *
+ * When run as a standalone script, manages full DB lifecycle.
  */
 if (require.main === module) {
-  runMigrations();
+  try {
+    runMigrations();
+  } finally {
+    closeDb();
+  }
 }

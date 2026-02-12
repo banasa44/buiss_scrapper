@@ -22,7 +22,7 @@ import type {
   SearchOffersQuery,
 } from "@/types";
 import { ALL_QUERIES } from "@/queries";
-import { openDb, runMigrations } from "@/db";
+import { openDb, closeDb, runMigrations } from "@/db";
 import {
   getQueryState,
   upsertQueryState,
@@ -31,7 +31,11 @@ import {
   markQueryError,
   listQueryStates,
 } from "@/db/repos/queryStateRepo";
-import { acquireRunLock, releaseRunLock } from "@/db/repos/runLockRepo";
+import {
+  acquireRunLock,
+  releaseRunLock,
+  refreshRunLock,
+} from "@/db/repos/runLockRepo";
 import {
   isClientPaused as isClientPausedDb,
   setClientPause,
@@ -48,6 +52,7 @@ import {
   QUERY_JITTER_MAX_MS,
   CYCLE_SLEEP_MIN_MS,
   CYCLE_SLEEP_MAX_MS,
+  RUN_LOCK_REFRESH_INTERVAL_MS,
 } from "@/constants";
 import * as logger from "@/logger";
 
@@ -337,115 +342,148 @@ export async function runOnce(): Promise<{
   const cycleStartMs = Date.now();
   logger.info("Starting runner (single pass)");
 
-  // Open database and run migrations
-  logger.debug("Opening database and running migrations");
-  openDb();
-  runMigrations();
-
-  // Generate unique owner ID for this run
-  const ownerId = randomUUID();
-
-  // Try to acquire global run lock
-  logger.debug("Acquiring global run lock", { ownerId });
-  const lockResult = acquireRunLock(ownerId);
-
-  if (!lockResult.ok) {
-    logger.warn("Failed to acquire run lock - another run may be in progress", {
-      reason: lockResult.reason,
-    });
-    return { total: 0, success: 0, failed: 0, skipped: 0 };
-  }
-
-  logger.info("Global run lock acquired", { ownerId });
-
   try {
-    // Ensure query_state rows exist for all registered queries
-    ensureQueryStateRows();
+    // Open database and run migrations
+    logger.debug("Opening database and running migrations");
+    openDb();
+    runMigrations();
 
-    let successCount = 0;
-    let failedCount = 0;
-    let skippedCount = 0;
+    // Generate unique owner ID for this run
+    const ownerId = randomUUID();
 
-    // Execute queries sequentially
-    for (let i = 0; i < ALL_QUERIES.length; i++) {
-      const query = ALL_QUERIES[i];
+    // Try to acquire global run lock
+    logger.debug("Acquiring global run lock", { ownerId });
+    const lockResult = acquireRunLock(ownerId);
 
-      // Check if client is paused (using persistent DB state)
-      if (isClientPausedDb(query.client)) {
-        const pauseInfo = getClientPause(query.client);
-        logger.info("Query skipped (client paused)", {
-          queryKey: query.queryKey,
-          client: query.client,
-          name: query.name,
-          status: "SKIPPED",
-          paused_until: pauseInfo?.paused_until,
-          reason: pauseInfo?.reason,
-        });
-        skippedCount++;
-        continue;
-      }
+    if (!lockResult.ok) {
+      logger.warn(
+        "Failed to acquire run lock - another run may be in progress",
+        {
+          reason: lockResult.reason,
+        },
+      );
+      return { total: 0, success: 0, failed: 0, skipped: 0 };
+    }
 
-      // Execute query
-      const success = await executeQuery(query);
-      if (success) {
-        successCount++;
+    logger.info("Global run lock acquired", { ownerId });
+
+    // Start heartbeat to refresh lock periodically
+    let refreshFailureCount = 0;
+    const heartbeatInterval = setInterval(() => {
+      const refreshed = refreshRunLock(ownerId);
+      if (refreshed) {
+        logger.debug("Run lock refreshed", { ownerId });
+        refreshFailureCount = 0; // Reset on success
       } else {
-        failedCount++;
+        refreshFailureCount++;
+        logger.warn("Failed to refresh run lock", {
+          ownerId,
+          consecutiveFailures: refreshFailureCount,
+        });
+        // Continue execution - lock will eventually expire if process is unhealthy
+        // Query execution has idempotency via query_state
+      }
+    }, RUN_LOCK_REFRESH_INTERVAL_MS);
+
+    try {
+      // Ensure query_state rows exist for all registered queries
+      ensureQueryStateRows();
+
+      let successCount = 0;
+      let failedCount = 0;
+      let skippedCount = 0;
+
+      // Execute queries sequentially
+      for (let i = 0; i < ALL_QUERIES.length; i++) {
+        const query = ALL_QUERIES[i];
+
+        // Check if client is paused (using persistent DB state)
+        if (isClientPausedDb(query.client)) {
+          const pauseInfo = getClientPause(query.client);
+          logger.info("Query skipped (client paused)", {
+            queryKey: query.queryKey,
+            client: query.client,
+            name: query.name,
+            status: "SKIPPED",
+            paused_until: pauseInfo?.paused_until,
+            reason: pauseInfo?.reason,
+          });
+          skippedCount++;
+          continue;
+        }
+
+        // Execute query
+        const success = await executeQuery(query);
+        if (success) {
+          successCount++;
+        } else {
+          failedCount++;
+        }
+
+        // Sleep jitter between queries (except after last query)
+        if (i < ALL_QUERIES.length - 1) {
+          await sleepJitter(QUERY_JITTER_MIN_MS, QUERY_JITTER_MAX_MS);
+        }
       }
 
-      // Sleep jitter between queries (except after last query)
-      if (i < ALL_QUERIES.length - 1) {
-        await sleepJitter(QUERY_JITTER_MIN_MS, QUERY_JITTER_MAX_MS);
+      // Log summary
+      const cycleElapsedMs = Date.now() - cycleStartMs;
+      const pausedClients = listClientPauses();
+      const allStates = listQueryStates();
+      const topFailures = allStates
+        .filter((s) => s.consecutive_failures > 0)
+        .sort((a, b) => b.consecutive_failures - a.consecutive_failures)
+        .slice(0, 2);
+
+      logger.info("Runner completed (single pass)", {
+        total: ALL_QUERIES.length,
+        success: successCount,
+        failed: failedCount,
+        skipped: skippedCount,
+        elapsedMs: cycleElapsedMs,
+        pausedClients: pausedClients.length,
+        ...(pausedClients.length > 0 && {
+          paused: pausedClients.map((p) => ({
+            client: p.client,
+            paused_until: p.paused_until,
+            reason: p.reason,
+          })),
+        }),
+        ...(topFailures.length > 0 && {
+          topFailures: topFailures.map((f) => ({
+            queryKey: f.query_key,
+            consecutive_failures: f.consecutive_failures,
+            error_code: f.error_code,
+          })),
+        }),
+      });
+
+      return {
+        total: ALL_QUERIES.length,
+        success: successCount,
+        failed: failedCount,
+        skipped: skippedCount,
+      };
+    } finally {
+      // Stop heartbeat
+      clearInterval(heartbeatInterval);
+      logger.debug("Heartbeat stopped", { ownerId });
+
+      // Always release the lock
+      logger.debug("Releasing global run lock", { ownerId });
+      const released = releaseRunLock(ownerId);
+      if (released) {
+        logger.info("Global run lock released", { ownerId });
+      } else {
+        logger.warn("Failed to release run lock (may not be owned)", {
+          ownerId,
+        });
       }
     }
-
-    // Log summary
-    const cycleElapsedMs = Date.now() - cycleStartMs;
-    const pausedClients = listClientPauses();
-    const allStates = listQueryStates();
-    const topFailures = allStates
-      .filter((s) => s.consecutive_failures > 0)
-      .sort((a, b) => b.consecutive_failures - a.consecutive_failures)
-      .slice(0, 2);
-
-    logger.info("Runner completed (single pass)", {
-      total: ALL_QUERIES.length,
-      success: successCount,
-      failed: failedCount,
-      skipped: skippedCount,
-      elapsedMs: cycleElapsedMs,
-      pausedClients: pausedClients.length,
-      ...(pausedClients.length > 0 && {
-        paused: pausedClients.map((p) => ({
-          client: p.client,
-          paused_until: p.paused_until,
-          reason: p.reason,
-        })),
-      }),
-      ...(topFailures.length > 0 && {
-        topFailures: topFailures.map((f) => ({
-          queryKey: f.query_key,
-          consecutive_failures: f.consecutive_failures,
-          error_code: f.error_code,
-        })),
-      }),
-    });
-
-    return {
-      total: ALL_QUERIES.length,
-      success: successCount,
-      failed: failedCount,
-      skipped: skippedCount,
-    };
   } finally {
-    // Always release the lock
-    logger.debug("Releasing global run lock", { ownerId });
-    const released = releaseRunLock(ownerId);
-    if (released) {
-      logger.info("Global run lock released", { ownerId });
-    } else {
-      logger.warn("Failed to release run lock (may not be owned)", { ownerId });
-    }
+    // Always close database connection
+    logger.debug("Closing database connection");
+    closeDb();
   }
 }
 
