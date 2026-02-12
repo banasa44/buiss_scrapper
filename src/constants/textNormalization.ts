@@ -12,8 +12,12 @@
  * - Whitespace (spaces, tabs, newlines)
  * - Common technical separators: / \ | ( ) [ ] { } , ; : . ! ? " '
  * - Hyphens and underscores
+ * - Unicode punctuation: curly quotes \u201c\u201d, apostrophes \u2018\u2019
  *
  * This pattern preserves meaningful word boundaries while splitting
  * on structural and punctuation characters commonly found in job offers.
+ *
+ * Matcher Hardening - Increment 1: Added Unicode punctuation support.
  */
-export const TOKEN_SEPARATOR_PATTERN = /[\s\/\\|()[\]{},;:.!?"'\-_]+/;
+export const TOKEN_SEPARATOR_PATTERN =
+  /[\s\/\\|()[\]{},;:.!?"'\-_\u201c\u201d\u2018\u2019]+/;

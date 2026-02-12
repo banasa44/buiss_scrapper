@@ -154,9 +154,13 @@ describe("normalizeToTokens", () => {
     });
 
     it("should handle mixed punctuation and spacing", () => {
-      expect(
-        normalizeToTokens("  Full-Stack,  Dev (C++/Python)  "),
-      ).toEqual(["full", "stack", "dev", "c++", "python"]);
+      expect(normalizeToTokens("  Full-Stack,  Dev (C++/Python)  ")).toEqual([
+        "full",
+        "stack",
+        "dev",
+        "c++",
+        "python",
+      ]);
     });
   });
 
@@ -241,6 +245,105 @@ describe("normalizeToTokens", () => {
         "line2",
         "line3",
       ]);
+    });
+  });
+
+  describe("Matcher Hardening - Increment 1: Currency symbol injection", () => {
+    it("should inject 'usd' token when $ symbol is present", () => {
+      const result = normalizeToTokens("Salary $100K");
+      expect(result).toContain("$100k");
+      expect(result).toContain("usd");
+      expect(result).toEqual(["salary", "$100k", "usd"]);
+    });
+
+    it("should inject 'gbp' token when £ symbol is present", () => {
+      const result = normalizeToTokens("Salary £50K");
+      expect(result).toContain("£50k");
+      expect(result).toContain("gbp");
+      expect(result).toEqual(["salary", "£50k", "gbp"]);
+    });
+
+    it("should inject 'eur' token when € symbol is present", () => {
+      const result = normalizeToTokens("Salary €60K");
+      expect(result).toContain("€60k");
+      expect(result).toContain("eur");
+      expect(result).toEqual(["salary", "€60k", "eur"]);
+    });
+
+    it("should handle multiple currency symbols in different tokens", () => {
+      const result = normalizeToTokens("$100K or €80K");
+      expect(result).toContain("$100k");
+      expect(result).toContain("€80k");
+      expect(result).toContain("usd");
+      expect(result).toContain("eur");
+    });
+
+    it("should inject currency token even for standalone symbols", () => {
+      const result = normalizeToTokens("paid in $");
+      expect(result).toContain("$");
+      expect(result).toContain("usd");
+    });
+
+    it("should handle USD keyword alongside $ symbol", () => {
+      // Both the token containing $ and the explicit "usd" keyword trigger injection
+      const result = normalizeToTokens("$100K USD");
+      expect(result).toContain("$100k");
+      expect(result).toContain("usd");
+      // Note: "usd" appears twice - once from explicit mention, once from $ injection
+      expect(result.filter((t) => t === "usd").length).toBe(2);
+    });
+  });
+
+  describe("Matcher Hardening - Increment 1: Unicode punctuation", () => {
+    it("should split on curly double quotes", () => {
+      expect(normalizeToTokens("\u201cUSD\u201d")).toEqual(["usd"]);
+      expect(normalizeToTokens("\u201cGBP\u201d currency")).toEqual([
+        "gbp",
+        "currency",
+      ]);
+    });
+
+    it("should split on curly single quotes", () => {
+      expect(normalizeToTokens("\u2018EUR\u2019")).toEqual(["eur"]);
+      expect(normalizeToTokens("\u2018GBP\u2019 required")).toEqual([
+        "gbp",
+        "required",
+      ]);
+    });
+
+    it("should handle mixed ASCII and Unicode quotes", () => {
+      expect(normalizeToTokens('"USD" or \u201cEUR\u201d')).toEqual([
+        "usd",
+        "or",
+        "eur",
+      ]);
+    });
+  });
+
+  describe("Matcher Hardening - Regression: existing behavior preserved", () => {
+    it("should still match existing non-currency keywords", () => {
+      // Ensure we didn't break existing tokenization
+      expect(normalizeToTokens("AWS GCP Azure")).toEqual([
+        "aws",
+        "gcp",
+        "azure",
+      ]);
+      expect(normalizeToTokens("Stripe Salesforce")).toEqual([
+        "stripe",
+        "salesforce",
+      ]);
+    });
+
+    it("should still split on commas and periods", () => {
+      expect(normalizeToTokens("USD, GBP, EUR.")).toEqual([
+        "usd",
+        "gbp",
+        "eur",
+      ]);
+    });
+
+    it("should still handle parentheses", () => {
+      expect(normalizeToTokens("(GBP) accepted")).toEqual(["gbp", "accepted"]);
     });
   });
 });
