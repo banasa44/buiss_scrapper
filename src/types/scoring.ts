@@ -86,6 +86,13 @@ export type ScoreReason = {
   fxCore?: boolean;
   /** Whether no-FX guard was applied (Scoring V2 - Increment 3) */
   appliedNoFxGuard?: boolean;
+  /** Total synergy points applied (Scoring V2 - Increment 4) */
+  synergyPoints?: number;
+  /** Synergy breakdown by type (Scoring V2 - Increment 4) */
+  synergyBreakdown?: {
+    fx_intl?: number;
+    fx_biz?: number;
+  };
 };
 
 /**

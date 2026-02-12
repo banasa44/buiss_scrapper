@@ -31,6 +31,10 @@ import {
   NO_FX_MAX_SCORE,
   BUCKET_CAPS,
   FX_CORE_THRESHOLD,
+  SYNERGY_FX_INTL_POINTS,
+  SYNERGY_FX_BIZ_POINTS,
+  SYNERGY_MAX_POINTS,
+  SYNERGY_MIN_BUCKET_POINTS,
 } from "@/constants/scoring";
 import type { BucketId, BucketScores } from "@/types/scoring";
 
@@ -246,7 +250,29 @@ export function scoreOffer(
     tech_proxy: Math.min(uncappedBuckets.tech_proxy, BUCKET_CAPS.tech_proxy),
   };
 
-  // Sum capped buckets + phrase points = raw score
+  // Scoring V2 - Increment 4: Synergy bonuses
+  // Apply synergy only if fxCore = true
+  let synergyPoints = 0;
+  const synergyBreakdown: { fx_intl?: number; fx_biz?: number } = {};
+
+  if (fxCore) {
+    // FX + International footprint synergy
+    if (bucketScores.intl_footprint >= SYNERGY_MIN_BUCKET_POINTS) {
+      synergyBreakdown.fx_intl = SYNERGY_FX_INTL_POINTS;
+      synergyPoints += SYNERGY_FX_INTL_POINTS;
+    }
+
+    // FX + Business model synergy
+    if (bucketScores.business_model >= SYNERGY_MIN_BUCKET_POINTS) {
+      synergyBreakdown.fx_biz = SYNERGY_FX_BIZ_POINTS;
+      synergyPoints += SYNERGY_FX_BIZ_POINTS;
+    }
+
+    // Cap total synergy
+    synergyPoints = Math.min(synergyPoints, SYNERGY_MAX_POINTS);
+  }
+
+  // Sum capped buckets + phrase points + synergy = raw score
   const cappedCategoryPoints =
     bucketScores.direct_fx +
     bucketScores.intl_footprint +
@@ -258,7 +284,7 @@ export function scoreOffer(
     0,
   );
 
-  let rawScore = cappedCategoryPoints + phrasePoints;
+  let rawScore = cappedCategoryPoints + phrasePoints + synergyPoints;
 
   // Scoring V2 - Increment 3: No-FX guard based on fxCore
   // Without fxCore evidence, cap score at 5.0
@@ -289,6 +315,8 @@ export function scoreOffer(
       bucketScores,
       fxCore,
       appliedNoFxGuard,
+      synergyPoints,
+      synergyBreakdown,
     },
   };
 }

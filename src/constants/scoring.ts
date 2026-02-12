@@ -115,3 +115,39 @@ export const BUCKET_CAPS = {
  * Scoring V2 - Increment 3: fxCore flag.
  */
 export const FX_CORE_THRESHOLD = 2.0;
+
+/**
+ * Synergy bonus points for FX + international footprint.
+ *
+ * Applied when fxCore=true AND intl_footprint bucket >= SYNERGY_MIN_BUCKET_POINTS.
+ *
+ * Scoring V2 - Increment 4: Synergy bonuses.
+ */
+export const SYNERGY_FX_INTL_POINTS = 1.0;
+
+/**
+ * Synergy bonus points for FX + business model.
+ *
+ * Applied when fxCore=true AND business_model bucket >= SYNERGY_MIN_BUCKET_POINTS.
+ *
+ * Scoring V2 - Increment 4: Synergy bonuses.
+ */
+export const SYNERGY_FX_BIZ_POINTS = 0.8;
+
+/**
+ * Maximum total synergy points that can be applied.
+ *
+ * Caps the sum of all synergy bonuses to prevent excessive boosting.
+ *
+ * Scoring V2 - Increment 4: Synergy bonuses.
+ */
+export const SYNERGY_MAX_POINTS = 1.8;
+
+/**
+ * Minimum bucket points required to trigger synergy.
+ *
+ * Bucket must have at least this value (after caps) to qualify for synergy bonus.
+ *
+ * Scoring V2 - Increment 4: Synergy bonuses.
+ */
+export const SYNERGY_MIN_BUCKET_POINTS = 1.0;

@@ -18,6 +18,10 @@ import {
   MAX_SCORE,
   BUCKET_CAPS,
   FX_CORE_THRESHOLD,
+  SYNERGY_FX_INTL_POINTS,
+  SYNERGY_FX_BIZ_POINTS,
+  SYNERGY_MAX_POINTS,
+  SYNERGY_MIN_BUCKET_POINTS,
 } from "@/constants/scoring";
 
 /**
@@ -596,5 +600,147 @@ describe("scoreOffer", () => {
     expect(result.reasons.appliedNoFxGuard).toBe(false);
     // Score can exceed 5.0
     expect(result.score).toBeGreaterThan(5);
+  });
+
+  // New tests for Scoring V2 - Increment 4: Synergy bonuses
+
+  it("should NOT apply synergy when fxCore=false (even if intl/biz buckets are high)", () => {
+    const hits: MatchHit[] = [
+      {
+        keywordId: "kw_intl",
+        categoryId: "cat_intl_market",
+        field: "title",
+        tokenIndex: 0,
+        matchedTokens: ["global"],
+        isNegated: false,
+      },
+      {
+        keywordId: "kw_biz",
+        categoryId: "cat_biz_saas",
+        field: "title",
+        tokenIndex: 1,
+        matchedTokens: ["saas"],
+        isNegated: false,
+      },
+    ];
+
+    const matchResult = createMatchResult(hits);
+    const result = scoreOffer(matchResult, catalog);
+
+    // No FX, so fxCore = false
+    expect(result.reasons.fxCore).toBe(false);
+    // Synergy should be 0
+    expect(result.reasons.synergyPoints).toBe(0);
+    expect(result.reasons.synergyBreakdown).toEqual({});
+  });
+
+  it("should apply FX+intl synergy when fxCore=true and intl_footprint >= threshold", () => {
+    const hits: MatchHit[] = [
+      {
+        keywordId: "kw_fx",
+        categoryId: "cat_fx_currency",
+        field: "description",
+        tokenIndex: 0,
+        matchedTokens: ["fx"],
+        isNegated: false,
+      },
+      {
+        keywordId: "kw_intl",
+        categoryId: "cat_intl_market",
+        field: "title",
+        tokenIndex: 1,
+        matchedTokens: ["global"],
+        isNegated: false,
+      },
+    ];
+
+    const matchResult = createMatchResult(hits);
+    const result = scoreOffer(matchResult, catalog);
+
+    // FX bucket: 4.0 × 1.0 = 4.0 >= 2.0 → fxCore = true
+    expect(result.reasons.fxCore).toBe(true);
+    // Intl bucket: 2.5 × 1.5 = 3.75 >= 1.0 → synergy applies
+    expect(result.reasons.bucketScores?.intl_footprint).toBeGreaterThanOrEqual(
+      SYNERGY_MIN_BUCKET_POINTS,
+    );
+    expect(result.reasons.synergyPoints).toBe(SYNERGY_FX_INTL_POINTS);
+    expect(result.reasons.synergyBreakdown?.fx_intl).toBe(
+      SYNERGY_FX_INTL_POINTS,
+    );
+  });
+
+  it("should apply FX+biz synergy when fxCore=true and business_model >= threshold", () => {
+    const hits: MatchHit[] = [
+      {
+        keywordId: "kw_fx",
+        categoryId: "cat_fx_currency",
+        field: "title",
+        tokenIndex: 0,
+        matchedTokens: ["currency"],
+        isNegated: false,
+      },
+      {
+        keywordId: "kw_biz",
+        categoryId: "cat_biz_saas",
+        field: "description",
+        tokenIndex: 1,
+        matchedTokens: ["saas"],
+        isNegated: false,
+      },
+    ];
+
+    const matchResult = createMatchResult(hits);
+    const result = scoreOffer(matchResult, catalog);
+
+    // FX bucket: 4.0 × 1.5 = 6.0 >= 2.0 → fxCore = true
+    expect(result.reasons.fxCore).toBe(true);
+    // Biz bucket: 2.5 × 1.0 = 2.5 >= 1.0 → synergy applies
+    expect(result.reasons.bucketScores?.business_model).toBeGreaterThanOrEqual(
+      SYNERGY_MIN_BUCKET_POINTS,
+    );
+    expect(result.reasons.synergyPoints).toBe(SYNERGY_FX_BIZ_POINTS);
+    expect(result.reasons.synergyBreakdown?.fx_biz).toBe(SYNERGY_FX_BIZ_POINTS);
+  });
+
+  it("should apply both synergies and cap at SYNERGY_MAX_POINTS", () => {
+    const hits: MatchHit[] = [
+      {
+        keywordId: "kw_fx",
+        categoryId: "cat_fx_currency",
+        field: "title",
+        tokenIndex: 0,
+        matchedTokens: ["fx"],
+        isNegated: false,
+      },
+      {
+        keywordId: "kw_intl",
+        categoryId: "cat_intl_market",
+        field: "title",
+        tokenIndex: 1,
+        matchedTokens: ["international"],
+        isNegated: false,
+      },
+      {
+        keywordId: "kw_biz",
+        categoryId: "cat_biz_saas",
+        field: "title",
+        tokenIndex: 2,
+        matchedTokens: ["platform"],
+        isNegated: false,
+      },
+    ];
+
+    const matchResult = createMatchResult(hits);
+    const result = scoreOffer(matchResult, catalog);
+
+    // FX bucket >= 2.0 → fxCore = true
+    expect(result.reasons.fxCore).toBe(true);
+    // Both intl and biz >= 1.0 → both synergies apply
+    expect(result.reasons.synergyBreakdown?.fx_intl).toBe(
+      SYNERGY_FX_INTL_POINTS,
+    );
+    expect(result.reasons.synergyBreakdown?.fx_biz).toBe(SYNERGY_FX_BIZ_POINTS);
+    // Total synergy: 1.0 + 0.8 = 1.8, capped at 1.8
+    expect(result.reasons.synergyPoints).toBe(SYNERGY_MAX_POINTS);
   });
 });
