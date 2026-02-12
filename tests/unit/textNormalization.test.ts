@@ -346,4 +346,85 @@ describe("normalizeToTokens", () => {
       expect(normalizeToTokens("(GBP) accepted")).toEqual(["gbp", "accepted"]);
     });
   });
+
+  describe("Matcher Hardening - Increment 2: US/UK/LATAM variant injection", () => {
+    it("should inject 'us' and 'usa' tokens for consecutive ['u','s'] pattern", () => {
+      const result = normalizeToTokens("U.S. market");
+      expect(result).toContain("u");
+      expect(result).toContain("s");
+      expect(result).toContain("us");
+      expect(result).toContain("usa");
+      expect(result).toContain("market");
+    });
+
+    it("should inject 'uk' token for consecutive ['u','k'] pattern", () => {
+      const result = normalizeToTokens("U.K. expansion");
+      expect(result).toContain("u");
+      expect(result).toContain("k");
+      expect(result).toContain("uk");
+      expect(result).toContain("expansion");
+    });
+
+    it("should inject 'us' and 'usa' tokens for Spanish EEUU", () => {
+      const result = normalizeToTokens("EEUU market");
+      expect(result).toContain("eeuu");
+      expect(result).toContain("us");
+      expect(result).toContain("usa");
+      expect(result).toContain("market");
+    });
+
+    it("should inject 'latam' token for latinoamerica variant", () => {
+      const result = normalizeToTokens("latinoamerica expansion");
+      expect(result).toContain("latinoamerica");
+      expect(result).toContain("latam");
+      expect(result).toContain("expansion");
+    });
+
+    it("should handle 'latam' token idempotently", () => {
+      const result = normalizeToTokens("LATAM region");
+      expect(result).toContain("latam");
+      expect(result).toEqual(["latam", "region"]);
+    });
+
+    it("should handle multiple region abbreviations in same text", () => {
+      const result = normalizeToTokens("U.S. and U.K. markets");
+      expect(result).toContain("us");
+      expect(result).toContain("usa");
+      expect(result).toContain("uk");
+    });
+
+    it("should handle EEUU with other keywords", () => {
+      const result = normalizeToTokens("EEUU USD salary");
+      expect(result).toContain("eeuu");
+      expect(result).toContain("us");
+      expect(result).toContain("usa");
+      expect(result).toContain("usd");
+      expect(result).toContain("salary");
+    });
+  });
+
+  describe("Matcher Hardening - Regression: Increment 2 non-interference", () => {
+    it("should not affect unrelated text with 'u' or 's' tokens separately", () => {
+      // "u" alone without following "s" should not inject anything
+      const result1 = normalizeToTokens("uber driver");
+      expect(result1).not.toContain("us");
+      expect(result1).not.toContain("usa");
+
+      // "s" alone should not inject anything
+      const result2 = normalizeToTokens("senior developer");
+      expect(result2).not.toContain("us");
+      expect(result2).not.toContain("usa");
+    });
+
+    it("should not affect 'us' appearing as part of longer words", () => {
+      // "us" should only be injected for consecutive ["u","s"], not from substring
+      const result = normalizeToTokens("business");
+      expect(result).toEqual(["business"]);
+    });
+
+    it("should preserve existing tokenization for non-region keywords", () => {
+      const result = normalizeToTokens("AWS GCP kubernetes");
+      expect(result).toEqual(["aws", "gcp", "kubernetes"]);
+    });
+  });
 });

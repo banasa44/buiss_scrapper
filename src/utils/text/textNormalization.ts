@@ -23,7 +23,8 @@ import { removeDiacritics } from "@/utils/text/removeDiacritics";
  * 2. Remove diacritics (e.g., á → a)
  * 3. Split on whitespace and common separators (see TOKEN_SEPARATOR_PATTERN)
  * 4. Inject currency symbol tokens (Matcher Hardening - Increment 1)
- * 5. Remove empty tokens
+ * 5. Inject region/market variant tokens (Matcher Hardening - Increment 2)
+ * 6. Remove empty tokens
  *
  * What this does NOT do:
  * - Stopword removal (including negation tokens like "no", "sin", "not", "without")
@@ -33,6 +34,12 @@ import { removeDiacritics } from "@/utils/text/removeDiacritics";
  * Matcher Hardening - Increment 1:
  * - Currency symbols ($, £, €) inject additional tokens (usd, gbp, eur) for better recall
  * - Unicode punctuation (curly quotes, apostrophes) handled like ASCII equivalents
+ *
+ * Matcher Hardening - Increment 2:
+ * - US/UK abbreviations: consecutive ["u","s"] → inject "us" and "usa"
+ * - UK abbreviations: consecutive ["u","k"] → inject "uk"
+ * - Spanish EEUU: "eeuu" → inject "us" and "usa"
+ * - LATAM variants: "latam" or "latinoamerica" → inject "latam"
  *
  * @param text - Input text to normalize and tokenize
  * @returns Array of normalized tokens (lowercased, no diacritics, no empty strings)
@@ -51,6 +58,10 @@ import { removeDiacritics } from "@/utils/text/removeDiacritics";
  * normalizeToTokens("Salary $100K USD")
  * // ["salary", "$100k", "usd", "usd"]
  * // Note: $ in token triggers "usd" injection
+ *
+ * normalizeToTokens("U.S. market experience")
+ * // ["u", "s", "us", "usa", "market", "experience"]
+ * // Note: consecutive ["u","s"] triggers "us" and "usa" injection
  */
 export function normalizeToTokens(text: string): string[] {
   // Step 1: Lowercase
@@ -82,5 +93,45 @@ export function normalizeToTokens(text: string): string[] {
     }
   }
 
-  return processedTokens;
+  // Step 5: Inject region/market variant tokens (Matcher Hardening - Increment 2)
+  const finalTokens: string[] = [];
+  for (let i = 0; i < processedTokens.length; i++) {
+    const token = processedTokens[i];
+    finalTokens.push(token);
+
+    // US abbreviation patterns: consecutive ["u", "s"] → inject "us" and "usa"
+    if (
+      token === "u" &&
+      i + 1 < processedTokens.length &&
+      processedTokens[i + 1] === "s"
+    ) {
+      finalTokens.push("us");
+      finalTokens.push("usa");
+    }
+
+    // UK abbreviation patterns: consecutive ["u", "k"] → inject "uk"
+    if (
+      token === "u" &&
+      i + 1 < processedTokens.length &&
+      processedTokens[i + 1] === "k"
+    ) {
+      finalTokens.push("uk");
+    }
+
+    // Spanish EEUU: "eeuu" → inject "us" and "usa"
+    if (token === "eeuu") {
+      finalTokens.push("us");
+      finalTokens.push("usa");
+    }
+
+    // LATAM variants: normalize to "latam"
+    if (token === "latam" || token === "latinoamerica") {
+      // Ensure "latam" is present (even if token is already "latam", it's idempotent)
+      if (token !== "latam") {
+        finalTokens.push("latam");
+      }
+    }
+  }
+
+  return finalTokens;
 }
