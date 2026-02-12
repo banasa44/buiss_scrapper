@@ -13,6 +13,7 @@ import { DirectoryIngestionTask } from "./directoryIngestionTask";
 import { AtsDiscoveryTask } from "./atsDiscoveryTask";
 import { LeverIngestionTask } from "./leverIngestionTask";
 import { GreenhouseIngestionTask } from "./greenhouseIngestionTask";
+import { SheetsHeaderEnsureTask } from "./sheetsHeaderEnsureTask";
 import { SheetsSyncTask } from "./sheetsSyncTask";
 import { FeedbackApplyTask } from "./feedbackApplyTask";
 
@@ -24,6 +25,7 @@ import { FeedbackApplyTask } from "./feedbackApplyTask";
  * - [x] ATS discovery task
  * - [x] Lever ingestion task
  * - [x] Greenhouse ingestion task
+ * - [x] Sheets header ensure task
  * - [x] Sheets sync task
  * - [x] Feedback apply task
  *
@@ -34,6 +36,7 @@ export const ALL_TASKS: Task[] = [
   AtsDiscoveryTask,
   LeverIngestionTask,
   GreenhouseIngestionTask,
+  SheetsHeaderEnsureTask,
   SheetsSyncTask,
   FeedbackApplyTask,
 ];
