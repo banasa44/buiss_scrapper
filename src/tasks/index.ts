@@ -11,6 +11,8 @@
 import type { Task } from "@/types";
 import { DirectoryIngestionTask } from "./directoryIngestionTask";
 import { AtsDiscoveryTask } from "./atsDiscoveryTask";
+import { LeverIngestionTask } from "./leverIngestionTask";
+import { GreenhouseIngestionTask } from "./greenhouseIngestionTask";
 
 /**
  * All registered tasks across pipeline stages
@@ -18,14 +20,19 @@ import { AtsDiscoveryTask } from "./atsDiscoveryTask";
  * TODO: Add tasks incrementally:
  * - [x] Directory ingestion task
  * - [x] ATS discovery task
- * - [ ] Lever ingestion task
- * - [ ] Greenhouse ingestion task
+ * - [x] Lever ingestion task
+ * - [x] Greenhouse ingestion task
  * - [ ] Sheets sync task
  * - [ ] Feedback apply task
  *
  * Tasks will be executed sequentially in array order.
  */
-export const ALL_TASKS: Task[] = [DirectoryIngestionTask, AtsDiscoveryTask];
+export const ALL_TASKS: Task[] = [
+  DirectoryIngestionTask,
+  AtsDiscoveryTask,
+  LeverIngestionTask,
+  GreenhouseIngestionTask,
+];
 
 /**
  * Find a task by its taskKey
