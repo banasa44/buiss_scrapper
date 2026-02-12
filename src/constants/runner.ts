@@ -55,3 +55,9 @@ export const LEVER_INGESTION_DEFAULT_LIMIT = 50;
  * Maximum number of Greenhouse company_sources to process in a single run
  */
 export const GREENHOUSE_INGESTION_DEFAULT_LIMIT = 50;
+
+/**
+ * ATS orchestrator provider execution order
+ * Defines the sequence in which ATS providers are run
+ */
+export const ATS_PROVIDER_EXECUTION_ORDER = ["lever", "greenhouse"] as const;
