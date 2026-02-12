@@ -2,11 +2,13 @@
 
 ## Overview
 
-This system scrapes job offers from InfoJobs, scores them, aggregates company metrics, and optionally syncs with Google Sheets for feedback processing. The runner orchestrates all queries sequentially with built-in safety mechanisms:
+This system runs a mixed runtime pipeline: task stages execute first (directory + ATS + Sheets), then registered InfoJobs queries execute. The runner operates sequentially with built-in safety mechanisms:
 
 - **Sequential execution**: Global lock prevents concurrent runs
-- **Client pausing**: Automatic 6-hour pause on rate limit (HTTP 429)
-- **Persistent state**: Query status, pauses, and locks survive restarts
+- **Cycle modes**: `once` runs one full cycle; `forever` loops cycles continuously
+- **Pipeline order**: 6 task stages, then active query registry
+- **Client pausing (query path)**: Automatic 6-hour pause on rate limit (HTTP 429)
+- **Persistent state**: Query status, pauses, and locks persist in SQLite
 - **Feedback window**: Sheets feedback only processes 03:00-06:00 Europe/Madrid
 
 ## Quick Start
@@ -33,7 +35,7 @@ npm run build
 ### Run Once (Single Pass)
 
 ```bash
-# Default mode: runs all queries once, then exits
+# Default mode: runs one full cycle (tasks, then queries), then exits
 node dist/runnerMain.js
 
 # or explicitly
@@ -42,8 +44,10 @@ RUN_MODE=once node dist/runnerMain.js
 
 Exit codes:
 
-- `0` = all queries succeeded
-- `1` = one or more queries failed or fatal error
+- `0` = cycle completed with no failed task/query
+- `1` = one or more task/query failures, or fatal error
+
+Note: If lock acquisition fails (`LOCKED`), the run can complete with no work done (`total=0`) and still exit `0`.
 
 ### Run Forever (Continuous)
 
@@ -53,6 +57,26 @@ RUN_MODE=forever node dist/runnerMain.js
 ```
 
 Cycle timing: 5-15 minutes between complete passes (randomized).
+
+### One Cycle Lifecycle
+
+`runOnce()` executes this exact sequence:
+
+1. Open DB connection and run migrations.
+2. Acquire global run lock (`run_lock.lock_name='global'`).
+3. Start lock heartbeat refresh every 15 minutes.
+4. Ensure `query_state` rows exist for registered queries.
+5. Execute task stages sequentially:
+   - `directory:ingest`
+   - `ats:discover`
+   - `ats:lever:ingest`
+   - `ats:greenhouse:ingest`
+   - `sheets:sync`
+   - `sheets:feedback:apply`
+6. Execute registered queries sequentially (currently InfoJobs queries).
+7. Stop heartbeat, release lock, close DB.
+
+If lock acquisition fails, the cycle exits early with no stage/query execution.
 
 ### Stop Gracefully
 
@@ -64,7 +88,7 @@ kill -TERM <pid>
 The runner will:
 
 1. Log: `"Shutdown signal received, will stop after current cycle"`
-2. Complete the current query execution
+2. Complete the current cycle
 3. Exit cleanly after cycle finishes
 
 Forced shutdown (second signal) exits immediately.
@@ -80,9 +104,11 @@ Forced shutdown (second signal) exits immediately.
 [INFO] Global run lock acquired { ownerId: 'uuid' }
 ```
 
-**Per-query execution:**
+**Stage and query execution:**
 
 ```
+[INFO] Starting directory ingestion
+[INFO] ATS discovery batch complete { ... }
 [INFO] Executing query { queryKey: 'infojobs:es_generic_all:...', client: 'infojobs', name: 'es_generic_all' }
 [INFO] Query executed successfully {
   queryKey: '...',
@@ -100,13 +126,15 @@ Forced shutdown (second signal) exits immediately.
 **Cycle completion:**
 
 ```
-[INFO] Runner completed (single pass) { total: 3, success: 3, failed: 0, skipped: 0 }
+[INFO] Runner completed (single pass) { total: ..., success: ..., failed: ..., skipped: ... }
 ```
+
+`total/success/failed/skipped` include both task stages and queries.
 
 **Forever mode:**
 
 ```
-[INFO] Runner cycle completed { cycleCount: 1, total: 3, success: 3, failed: 0, skipped: 0 }
+[INFO] Runner cycle completed { cycleCount: 1, total: ..., success: ..., failed: ..., skipped: ... }
 [INFO] Cycle complete, sleeping before next iteration { cycleCount: 1, sleepMs: 456789 }
 ```
 
@@ -120,6 +148,7 @@ Override: Set `DB_PATH` environment variable
 - Database file exists at expected path
 - `ingestion_runs` table has recent entries with `status='success'`
 - `query_state` table shows `status='SUCCESS'` or `status='IDLE'` for queries
+- Task stage start/completion logs are present for recent cycles
 - No stale locks in `run_lock` (expires_at > now)
 
 ## Observability via SQLite
@@ -129,6 +158,12 @@ Open database:
 ```bash
 sqlite3 ./data/app.db
 ```
+
+Important scope:
+
+- Cycle counters in runner summaries include both task stages and queries.
+- `query_state` tracks query path only.
+- Task execution state is primarily visible via logs.
 
 ### Recent Ingestion Runs
 
@@ -203,6 +238,8 @@ FROM run_lock;
 
 ### Client Pause State
 
+Pause state applies to query execution path (currently InfoJobs queries), not task stages.
+
 ```sql
 -- Check paused clients
 SELECT
@@ -259,7 +296,8 @@ WHERE lock_name = 'global';
 1. **If lock is active (expires_at > now):**
    - Another process is running → wait for it to finish
    - Check `ps aux | grep runnerMain` to confirm process exists
-   - Lock TTL is 3600 seconds (1 hour), will auto-expire if process crashed
+   - Lock TTL is 3600 seconds (1 hour), and active runner refreshes lock every 900000 ms (15 minutes)
+   - While healthy, `expires_at` should keep moving forward
 
 2. **If lock is expired (expires_at < now):**
    - Normal behavior: next run attempt will automatically take over the lock
@@ -270,6 +308,10 @@ WHERE lock_name = 'global';
    DELETE FROM run_lock WHERE lock_name = 'global';
    ```
    ⚠️ **WARNING**: Only do this if you're 100% sure no runner process exists. Check with `ps` first.
+
+**Operational note:**
+
+If lock acquisition fails, that cycle may report `total=0` and do no work. In `forever` mode, next cycles will retry lock acquisition automatically.
 
 ### Client Paused Due to Rate Limit
 
@@ -293,9 +335,10 @@ FROM client_pause;
 This is **expected behavior** after hitting InfoJobs rate limits (HTTP 429).
 
 - Pause duration: **6 hours** (21600 seconds)
-- Runner will automatically skip all queries for that client until pause expires
+- Runner will automatically skip queries for that client until pause expires
 - No intervention needed - wait for pause to expire naturally
 - In `forever` mode, runner will check again on next cycle
+- Task stages are unaffected by this pause state
 
 **Early resume (use with caution):**
 
@@ -357,16 +400,74 @@ SET status = 'IDLE',
 WHERE status = 'ERROR';
 ```
 
+### Stage Troubleshooting (Task Pipeline)
+
+#### Directory Sources Ingestion (`directory:ingest`)
+
+**Symptoms:** low `upserted`, high `failed`, or no recent `"Directory ingestion complete"` log.
+
+**Action:**
+
+- Check task logs for `fetched/attempted/upserted/skipped/failed` counters.
+- Validate outbound HTTP/network access to source directories.
+- Re-run one cycle and compare counters before/after.
+
+#### ATS Discovery Batch (`ats:discover`)
+
+**Symptoms:** `checked` increases but `found/persisted` stay near zero.
+
+**Action:**
+
+- Inspect `"ATS discovery batch complete"` counters (`checked/found/persisted/notFound/error`).
+- Verify companies have reachable website URLs in DB.
+- Expect partial misses; prioritize rising `error` counts.
+
+#### Lever ATS Ingestion (`ats:lever:ingest`)
+
+**Symptoms:** `"Lever ingestion pipeline complete"` with persistent `failed > 0` or `upserted=0` despite known sources.
+
+**Action:**
+
+- Check completion counters (`processed/upserted/skipped/failed/affectedCompanies`).
+- Verify `company_sources` rows exist for provider `lever`.
+- Investigate network/API availability for affected tenants.
+
+#### Greenhouse ATS Ingestion (`ats:greenhouse:ingest`)
+
+**Symptoms:** `"Greenhouse ingestion pipeline complete"` with persistent `failed > 0` or `upserted=0` despite known sources.
+
+**Action:**
+
+- Check completion counters (`processed/upserted/skipped/failed/affectedCompanies`).
+- Verify `company_sources` rows exist for provider `greenhouse`.
+- Investigate network/API availability for affected boards.
+
+#### Sheets Sync (`sheets:sync`) — Config-Gated
+
+**Symptoms:** `"Sheets sync skipped: not configured"` or task failure due to auth/config.
+
+**Action:**
+
+- If Sheets is not needed, leave `GOOGLE_SHEETS_SPREADSHEET_ID` unset.
+- If needed, set `GOOGLE_SHEETS_SPREADSHEET_ID`, `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`.
+- Confirm service account has spreadsheet access.
+
+#### Feedback Apply (`sheets:feedback:apply`) — Config + Time-Gated
+
+**Symptoms:** `"Feedback apply skipped: Sheets not configured"` or `"Feedback apply skipped: outside nightly window"`.
+
+**Action:**
+
+- Confirm gate: feedback runs only during `03:00-06:00` `Europe/Madrid`.
+- Run during window if feedback application is required.
+- Keep Sheets disabled by unsetting `GOOGLE_SHEETS_SPREADSHEET_ID` when not needed.
+
 ### Feedback Skipped Outside Nightly Window
 
 **Symptoms:**
 
 ```
-[INFO] Feedback read skipped (outside nightly window) {
-  reason: 'Window closed (03:00-06:00 Europe/Madrid)',
-  currentHour: 14,
-  timezone: 'Europe/Madrid'
-}
+[INFO] Feedback apply skipped: outside nightly window { reason: 'Outside feedback window (3:00-6:00 Europe/Madrid), current hour: ...' }
 ```
 
 **Confirm:**
@@ -388,7 +489,7 @@ None needed. This is a safety feature. If you need feedback processing:
 
 ```
 [ERROR] Failed to initialize Sheets client { error: 'Invalid service account credentials' }
-[ERROR] Query failed with FATAL error { error_code: 'AUTH', ... }
+[ERROR] Task execution failed { taskKey: 'sheets:sync', ... }
 ```
 
 **Action:**
@@ -602,7 +703,7 @@ sudo journalctl -u buiss-scraper -f
 
 **Recommended: `info`** (default)
 
-- Logs all query executions, successes, failures
+- Logs task stages and query executions (successes/failures/skips)
 - Cycle summaries with metrics
 - Errors with full context
 

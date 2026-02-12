@@ -1,6 +1,6 @@
 # buiss-scrapper
 
-InfoJobs offer scraper with scoring and aggregation pipeline.
+Job offer ingestion pipeline with scoring, aggregation, and optional Sheets sync.
 
 ## Quick Start
 
@@ -45,7 +45,18 @@ InfoJobs offer scraper with scoring and aggregation pipeline.
 
 ### Running the Scraper
 
-**Single pass (run all queries once, then exit):**
+Canonical runtime entrypoint: `dist/runnerMain.js`.
+
+`RUN_MODE=once` (default) runs one full cycle and exits.
+One cycle executes:
+
+1. Directory Sources Ingestion (`directory:ingest`)
+2. ATS Discovery Batch (`ats:discover`)
+3. Lever ATS Ingestion (`ats:lever:ingest`)
+4. Greenhouse ATS Ingestion (`ats:greenhouse:ingest`)
+5. Sheets Sync (`sheets:sync`)
+6. Feedback Apply (`sheets:feedback:apply`)
+7. Registered InfoJobs queries (transitional mixed runtime; queries still run after tasks)
 
 ```bash
 npm run build && node dist/runnerMain.js
@@ -53,7 +64,7 @@ npm run build && node dist/runnerMain.js
 RUN_MODE=once node dist/runnerMain.js
 ```
 
-**Continuous mode (run forever until terminated):**
+`RUN_MODE=forever` runs cycles continuously until terminated:
 
 ```bash
 RUN_MODE=forever node dist/runnerMain.js
@@ -63,8 +74,9 @@ RUN_MODE=forever node dist/runnerMain.js
 
 **Check logs:**
 
-- Look for `"Starting runner"` and `"Query executed successfully"` messages
-- Each query logs: `queryKey`, `status`, `elapsedMs`, `runId`, `pages_fetched`, `offers_fetched`
+- Look for `"Starting runner"` and `"Runner completed (single pass)"` messages
+- Tasks log stage start/completion (directory, ATS discovery, lever, greenhouse, sheets sync, feedback apply)
+- Queries log `Executing query` and `Query executed successfully` with `queryKey`, `status`, `elapsedMs`, and run counters
 
 **Inspect database:**
 
@@ -88,9 +100,11 @@ SELECT query_key, status, last_success_at, consecutive_failures FROM query_state
 ```
 [INFO] Starting runner (single pass mode)
 [INFO] Global run lock acquired
+[INFO] Starting directory ingestion
+[INFO] Greenhouse ingestion pipeline complete
 [INFO] Executing query { queryKey: 'infojobs:es_generic_all:...', ... }
 [INFO] Query executed successfully { status: 'SUCCESS', pages_fetched: 5, offers_fetched: 100, ... }
-[INFO] Runner completed (single pass) { total: 3, success: 3, failed: 0, skipped: 0 }
+[INFO] Runner completed (single pass) { total: ..., success: ..., failed: ..., skipped: ... }
 ```
 
 ## Development
@@ -101,24 +115,28 @@ Run the application in development mode with hot-reload support:
 npm run dev
 ```
 
-This runs `src/main.ts` (legacy entry point). For M7 orchestration, use `runnerMain.js` as shown above.
+`npm run dev` runs `src/main.ts`, which is a legacy non-pipeline entrypoint.
+Current pipeline runtime is `runnerMain` (`node dist/runnerMain.js`).
+`npm start` also points to legacy `dist/main.js`.
 
 ## Configuration
 
 All configuration is done via environment variables. Copy `.env.example` to `.env` and customize.
 
-**Required:**
+**Required in practice (current runner cycle):**
 
 - `IJ_CLIENT_ID` - InfoJobs API client ID
 - `IJ_CLIENT_SECRET` - InfoJobs API client secret
 
-**Optional:**
+InfoJobs queries are still active after the task pipeline, so these are currently required for successful full cycles.
+
+**Optional defaults:**
 
 - `DB_PATH` - SQLite database path (default: `./data/app.db`)
 - `LOG_LEVEL` - Logging verbosity: `debug`, `info`, `warn`, `error` (default: `info`)
 - `RUN_MODE` - Execution mode: `once` or `forever` (default: `once`)
 
-**Google Sheets Integration (optional):**
+**Conditional: Google Sheets integration**
 
 Set `GOOGLE_SHEETS_SPREADSHEET_ID` to enable automated Sheets sync and feedback processing.
 When enabled, you must also provide:
@@ -129,6 +147,10 @@ When enabled, you must also provide:
 
 The service account needs `https://www.googleapis.com/auth/spreadsheets` scope and access to the target spreadsheet.
 
+**Test-only:**
+
+- `LIVE_SHEETS_TEST` - Enables live Sheets connectivity tests; not used by `runnerMain` runtime
+
 **Loading:**
 
 - `npm run dev` and `npm start` (via `src/main.ts`) load `.env` automatically using `dotenv/config`
@@ -138,12 +160,17 @@ The service account needs `https://www.googleapis.com/auth/spreadsheets` scope a
 ## Project Structure
 
 - `src/` - Source code
-  - `clients/` - External API clients (InfoJobs, etc.)
+  - `tasks/` - Task pipeline registry and task implementations
+  - `orchestration/` - Runner orchestration (`runOnce`, `runForever`)
+  - `atsDiscovery/` - ATS detection pipeline
+  - `companySources/` - Directory source ingestion
+  - `ingestion/` - Offer ingestion and run lifecycle
+  - `sheets/` - Sheets sync and feedback processing
+  - `queries/` - Registered query definitions (currently InfoJobs)
+  - `db/` - Database connection, migrations, repositories
+  - `clients/` - External API clients (InfoJobs, Lever, Greenhouse, Google Sheets)
+  - `constants/` - Shared runtime/config constants
   - `types/` - Shared TypeScript types
-  - `config/` - Configuration loader (future)
-  - `db/` - Database layer (future)
-  - `core/` - Business logic (future)
-  - `exporters/` - Export modules (future)
 
 ## Import Aliases
 
