@@ -14,7 +14,7 @@ import type { MatchResult, MatchHit, PhraseMatchHit } from "@/types/matching";
 import {
   TIER_WEIGHTS,
   FIELD_WEIGHTS,
-  PHRASE_BOOST_POINTS,
+  PHRASE_TIER_WEIGHTS,
   MAX_SCORE,
 } from "@/constants/scoring";
 
@@ -51,7 +51,28 @@ function createTestCatalog(): CatalogRuntime {
       ],
     ]),
     keywords: [],
-    phrases: [],
+    phrases: [
+      {
+        id: "phrase_1",
+        tokens: ["usd"],
+        tier: 3,
+      },
+      {
+        id: "phrase_2",
+        tokens: ["intl"],
+        tier: 2,
+      },
+      {
+        id: "phrase_negated",
+        tokens: ["no"],
+        tier: 3,
+      },
+      {
+        id: "phrase_active",
+        tokens: ["yes"],
+        tier: 2,
+      },
+    ],
   };
 }
 
@@ -86,7 +107,7 @@ describe("scoreOffer", () => {
   });
 
   it("should clamp score to MAX_SCORE when raw score exceeds it", () => {
-    // Create hits from multiple categories + phrases to exceed MAX_SCORE
+    // Create hits from multiple categories + tier 3 phrase to exceed MAX_SCORE
     const hits: MatchHit[] = [
       {
         keywordId: "kw_tier3",
@@ -114,26 +135,20 @@ describe("scoreOffer", () => {
       },
     ];
 
+    // Add tier 3 phrase to bypass no-FX guard
     const phraseHits: PhraseMatchHit[] = [
       {
-        phraseId: "p1",
-        field: "description",
+        phraseId: "phrase_1",
+        field: "title",
         tokenIndex: 0,
-        matchedTokens: ["t"],
+        matchedTokens: ["usd"],
         isNegated: false,
       },
       {
-        phraseId: "p2",
-        field: "description",
+        phraseId: "phrase_2",
+        field: "title",
         tokenIndex: 1,
-        matchedTokens: ["t"],
-        isNegated: false,
-      },
-      {
-        phraseId: "p3",
-        field: "description",
-        tokenIndex: 2,
-        matchedTokens: ["t"],
+        matchedTokens: ["intl"],
         isNegated: false,
       },
     ];
@@ -155,13 +170,25 @@ describe("scoreOffer", () => {
       isNegated: false,
     };
 
-    const matchResult = createMatchResult([hit]);
+    // Add tier 3 phrase to bypass no-FX guard
+    const phraseHit: PhraseMatchHit = {
+      phraseId: "phrase_1",
+      field: "title",
+      tokenIndex: 5,
+      matchedTokens: ["usd"],
+      isNegated: false,
+    };
+
+    const matchResult = createMatchResult([hit], [phraseHit]);
     const result = scoreOffer(matchResult, catalog);
 
-    // tier3 × title = TIER_WEIGHTS[3] × FIELD_WEIGHTS.title
-    const expectedScore = TIER_WEIGHTS[3] * FIELD_WEIGHTS.title;
-    expect(result.score).toBe(expectedScore);
-    expect(result.reasons.categories[0].points).toBe(expectedScore);
+    // tier3 × title = TIER_WEIGHTS[3] × FIELD_WEIGHTS.title (category only)
+    const expectedCategoryScore = TIER_WEIGHTS[3] * FIELD_WEIGHTS.title;
+    expect(result.reasons.categories[0].points).toBe(expectedCategoryScore);
+    // Total includes phrase tier 3 in title
+    const expectedTotalScore =
+      expectedCategoryScore + PHRASE_TIER_WEIGHTS[3] * FIELD_WEIGHTS.title;
+    expect(result.score).toBe(Math.round(expectedTotalScore));
   });
 
   it("should NOT stack points for multiple hits from same category", () => {
@@ -193,14 +220,23 @@ describe("scoreOffer", () => {
       },
     ];
 
-    const matchResult = createMatchResult(hits);
+    // Add tier 3 phrase to bypass no-FX guard
+    const phraseHit: PhraseMatchHit = {
+      phraseId: "phrase_1",
+      field: "description",
+      tokenIndex: 10,
+      matchedTokens: ["usd"],
+      isNegated: false,
+    };
+
+    const matchResult = createMatchResult(hits, [phraseHit]);
     const result = scoreOffer(matchResult, catalog);
 
-    // Should only count highest: tier3 × title
-    const expectedScore = TIER_WEIGHTS[3] * FIELD_WEIGHTS.title;
+    // Should only count highest category: tier3 × title (not stacked)
+    const expectedCategoryScore = TIER_WEIGHTS[3] * FIELD_WEIGHTS.title;
     expect(result.reasons.categories).toHaveLength(1);
     expect(result.reasons.categories[0].hitCount).toBe(3);
-    expect(result.score).toBe(expectedScore);
+    expect(result.reasons.categories[0].points).toBe(expectedCategoryScore);
   });
 
   it("should sum points from multiple different categories", () => {
@@ -231,7 +267,16 @@ describe("scoreOffer", () => {
       },
     ];
 
-    const matchResult = createMatchResult(hits);
+    // Add tier 3 phrase to bypass no-FX guard
+    const phraseHit: PhraseMatchHit = {
+      phraseId: "phrase_1",
+      field: "title",
+      tokenIndex: 5,
+      matchedTokens: ["usd"],
+      isNegated: false,
+    };
+
+    const matchResult = createMatchResult(hits, [phraseHit]);
     const result = scoreOffer(matchResult, catalog);
 
     // (tier3×title) + (tier2×description) + (tier1×description)
@@ -246,6 +291,7 @@ describe("scoreOffer", () => {
 
   it("should apply phrase boosts without stacking per unique phrase", () => {
     // Same phrase appears 3 times, should only count once
+    // phrase_1 is tier 3, title has field weight 1.5
     const phraseHits: PhraseMatchHit[] = [
       {
         phraseId: "phrase_1",
@@ -273,13 +319,16 @@ describe("scoreOffer", () => {
     const matchResult = createMatchResult([], phraseHits);
     const result = scoreOffer(matchResult, catalog);
 
+    // phrase_1 is tier 3, best field is title (1.5)
+    const expectedPoints = PHRASE_TIER_WEIGHTS[3] * FIELD_WEIGHTS.title;
     expect(result.reasons.phrases).toHaveLength(1);
     expect(result.reasons.phrases[0].hitCount).toBe(3);
-    expect(result.reasons.phrases[0].points).toBe(PHRASE_BOOST_POINTS);
-    expect(result.score).toBe(Math.round(PHRASE_BOOST_POINTS));
+    expect(result.reasons.phrases[0].points).toBe(expectedPoints);
+    expect(result.score).toBe(Math.round(expectedPoints));
   });
 
   it("should sum points from multiple different phrases", () => {
+    // phrase_1 is tier 3, phrase_2 is tier 2
     const phraseHits: PhraseMatchHit[] = [
       {
         phraseId: "phrase_1",
@@ -300,8 +349,11 @@ describe("scoreOffer", () => {
     const matchResult = createMatchResult([], phraseHits);
     const result = scoreOffer(matchResult, catalog);
 
+    const expectedPoints =
+      PHRASE_TIER_WEIGHTS[3] * FIELD_WEIGHTS.description +
+      PHRASE_TIER_WEIGHTS[2] * FIELD_WEIGHTS.description;
     expect(result.reasons.phrases).toHaveLength(2);
-    expect(result.score).toBe(Math.round(PHRASE_BOOST_POINTS * 2));
+    expect(result.score).toBe(Math.round(expectedPoints));
   });
 
   it("should exclude negated hits from scoring (both keywords and phrases)", () => {
@@ -344,9 +396,10 @@ describe("scoreOffer", () => {
     const matchResult = createMatchResult(keywordHits, phraseHits);
     const result = scoreOffer(matchResult, catalog);
 
-    // Should only score active tier2 keyword + active phrase
+    // Should only score active tier2 keyword + active phrase (tier 2)
     const expectedScore = Math.round(
-      TIER_WEIGHTS[2] * FIELD_WEIGHTS.description + PHRASE_BOOST_POINTS,
+      TIER_WEIGHTS[2] * FIELD_WEIGHTS.description +
+        PHRASE_TIER_WEIGHTS[2] * FIELD_WEIGHTS.description,
     );
     expect(result.reasons.negatedKeywordHits).toBe(1);
     expect(result.reasons.negatedPhraseHits).toBe(1);

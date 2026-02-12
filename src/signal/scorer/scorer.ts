@@ -26,8 +26,9 @@ import type {
 import {
   TIER_WEIGHTS,
   FIELD_WEIGHTS,
-  PHRASE_BOOST_POINTS,
+  PHRASE_TIER_WEIGHTS,
   MAX_SCORE,
+  NO_FX_MAX_SCORE,
 } from "@/constants/scoring";
 
 /**
@@ -96,25 +97,48 @@ function aggregateCategoryContributions(
  * Each unique phrase contributes once, regardless of how many times
  * it appears in the offer.
  *
+ * Scoring V2 - Increment 1:
+ * - Phrase points now depend on phrase tier (via PHRASE_TIER_WEIGHTS)
+ * - Field weight multiplier applied (title vs description)
+ *
  * @param phraseHits - Active (non-negated) phrase hits
+ * @param catalog - Runtime catalog with phrase metadata
  * @returns Array of phrase contributions
  */
 function aggregatePhraseContributions(
   phraseHits: MatchResult["phraseHits"],
+  catalog: CatalogRuntime,
 ): PhraseContribution[] {
-  const phraseHitsMap = new Map<string, number>();
+  // Group by phrase ID and track highest field weight
+  const phraseMap = new Map<string, { hitCount: number; maxPoints: number }>();
 
   for (const hit of phraseHits) {
-    const count = phraseHitsMap.get(hit.phraseId) ?? 0;
-    phraseHitsMap.set(hit.phraseId, count + 1);
+    const phrase = catalog.phrases.find((p) => p.id === hit.phraseId);
+    if (!phrase) {
+      // Skip invalid phrase references
+      continue;
+    }
+
+    const fieldWeight = FIELD_WEIGHTS[hit.field] ?? 1.0;
+    const tierWeight = PHRASE_TIER_WEIGHTS[phrase.tier];
+    const points = tierWeight * fieldWeight;
+
+    const existing = phraseMap.get(hit.phraseId);
+    if (!existing) {
+      phraseMap.set(hit.phraseId, { hitCount: 1, maxPoints: points });
+    } else {
+      // Update hit count but only keep the highest points
+      existing.hitCount += 1;
+      existing.maxPoints = Math.max(existing.maxPoints, points);
+    }
   }
 
   const contributions: PhraseContribution[] = [];
-  for (const [phraseId, hitCount] of phraseHitsMap) {
+  for (const [phraseId, { hitCount, maxPoints }] of phraseMap) {
     contributions.push({
       phraseId,
       hitCount,
-      points: PHRASE_BOOST_POINTS, // Each unique phrase contributes once
+      points: maxPoints, // Each unique phrase contributes once (max field weight)
     });
   }
 
@@ -166,7 +190,10 @@ export function scoreOffer(
   );
 
   // Aggregate phrase contributions (enforces max 1 per phrase)
-  const phraseContributions = aggregatePhraseContributions(activePhraseHits);
+  const phraseContributions = aggregatePhraseContributions(
+    activePhraseHits,
+    catalog,
+  );
 
   // Compute raw score
   const categoryPoints = categoryContributions.reduce(
@@ -177,7 +204,19 @@ export function scoreOffer(
     (sum, p) => sum + p.points,
     0,
   );
-  const rawScore = categoryPoints + phrasePoints;
+  let rawScore = categoryPoints + phrasePoints;
+
+  // Scoring V2 - Increment 1: No-FX guard
+  // Without direct FX signal, cap score at 5.0
+  // Direct FX = any phrase with tier 3
+  const hasDirectFX = activePhraseHits.some((hit) => {
+    const phrase = catalog.phrases.find((p) => p.id === hit.phraseId);
+    return phrase?.tier === 3;
+  });
+
+  if (!hasDirectFX) {
+    rawScore = Math.min(rawScore, NO_FX_MAX_SCORE);
+  }
 
   // Clamp and round to integer
   const finalScore = Math.round(Math.max(0, Math.min(MAX_SCORE, rawScore)));

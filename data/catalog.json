@@ -1,133 +1,303 @@
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "categories": [
     {
-      "id": "cat_cloud_infra",
-      "name": "Cloud Infrastructure",
+      "id": "cat_fx_currency_ops",
+      "name": "FX & Currency Operations",
       "tier": 3
     },
     {
-      "id": "cat_ads_platforms",
-      "name": "Advertising Platforms",
+      "id": "cat_fx_crossborder_payments",
+      "name": "Cross-Border Payments",
       "tier": 3
     },
     {
-      "id": "cat_payments",
-      "name": "Global Payments",
+      "id": "cat_fx_trade_ops",
+      "name": "International Trade Operations",
       "tier": 3
     },
     {
-      "id": "cat_crm",
-      "name": "CRM & Marketing Automation",
+      "id": "cat_intl_market_presence",
+      "name": "International Market Presence",
       "tier": 2
     },
     {
-      "id": "cat_analytics",
-      "name": "Data & Analytics",
+      "id": "cat_biz_finance_ops",
+      "name": "Finance & Treasury Operations",
       "tier": 2
     },
     {
-      "id": "cat_collaboration",
-      "name": "Collaboration Tools",
+      "id": "cat_biz_ecommerce_marketplace",
+      "name": "International Ecommerce & Marketplace",
+      "tier": 2
+    },
+    {
+      "id": "cat_biz_saas_international",
+      "name": "SaaS International Revenue",
+      "tier": 2
+    },
+    {
+      "id": "cat_proxy_payment_stack",
+      "name": "Payment Stack (Proxy)",
+      "tier": 1
+    },
+    {
+      "id": "cat_proxy_cloud_stack",
+      "name": "Cloud Stack (Proxy)",
+      "tier": 1
+    },
+    {
+      "id": "cat_proxy_growth_stack",
+      "name": "Growth Stack (Proxy)",
       "tier": 1
     }
   ],
   "keywords": [
     {
-      "id": "kw_aws",
-      "categoryId": "cat_cloud_infra",
-      "canonical": "AWS",
-      "aliases": ["aws", "amazon web services", "ec2", "s3", "lambda"]
+      "id": "kw_usd_currency",
+      "categoryId": "cat_fx_currency_ops",
+      "canonical": "USD",
+      "aliases": ["usd"]
     },
     {
-      "id": "kw_gcp",
-      "categoryId": "cat_cloud_infra",
-      "canonical": "GCP",
-      "aliases": ["gcp", "google cloud", "google cloud platform"]
+      "id": "kw_gbp_currency",
+      "categoryId": "cat_fx_currency_ops",
+      "canonical": "GBP",
+      "aliases": ["gbp"]
     },
     {
-      "id": "kw_azure",
-      "categoryId": "cat_cloud_infra",
-      "canonical": "Azure",
-      "aliases": ["azure", "microsoft azure"]
+      "id": "kw_chf_currency",
+      "categoryId": "cat_fx_currency_ops",
+      "canonical": "CHF",
+      "aliases": ["chf"]
     },
     {
-      "id": "kw_google_ads",
-      "categoryId": "cat_ads_platforms",
-      "canonical": "Google Ads",
-      "aliases": ["google ads", "adwords", "google adwords"]
+      "id": "kw_forex",
+      "categoryId": "cat_fx_currency_ops",
+      "canonical": "Forex",
+      "aliases": ["forex", "fx"]
     },
     {
-      "id": "kw_meta_ads",
-      "categoryId": "cat_ads_platforms",
-      "canonical": "Meta Ads",
-      "aliases": ["meta ads", "facebook ads", "instagram ads"]
+      "id": "kw_divisa",
+      "categoryId": "cat_fx_currency_ops",
+      "canonical": "Divisa",
+      "aliases": ["divisa", "divisas", "multidivisa"]
     },
     {
-      "id": "kw_tiktok_ads",
-      "categoryId": "cat_ads_platforms",
-      "canonical": "TikTok Ads",
-      "aliases": ["tiktok ads", "tiktok for business"]
+      "id": "kw_tipo_cambio",
+      "categoryId": "cat_fx_currency_ops",
+      "canonical": "Tipo de Cambio",
+      "aliases": ["tipo de cambio", "cambio de divisa"]
+    },
+    {
+      "id": "kw_international_payments",
+      "categoryId": "cat_fx_crossborder_payments",
+      "canonical": "International Payments",
+      "aliases": [
+        "international payments",
+        "pagos internacionales",
+        "transferencias internacionales"
+      ]
+    },
+    {
+      "id": "kw_crossborder_payments",
+      "categoryId": "cat_fx_crossborder_payments",
+      "canonical": "Cross-Border Payments",
+      "aliases": [
+        "cross-border payments",
+        "cross border payments",
+        "cobros internacionales"
+      ]
+    },
+    {
+      "id": "kw_swift",
+      "categoryId": "cat_fx_crossborder_payments",
+      "canonical": "SWIFT",
+      "aliases": ["swift"]
+    },
+    {
+      "id": "kw_foreign_payments",
+      "categoryId": "cat_fx_crossborder_payments",
+      "canonical": "Foreign Payments",
+      "aliases": ["pagos en divisa", "cobros en divisa"]
+    },
+    {
+      "id": "kw_export_import",
+      "categoryId": "cat_fx_trade_ops",
+      "canonical": "Export/Import",
+      "aliases": ["exportacion", "importacion", "export", "import"]
+    },
+    {
+      "id": "kw_international_trade",
+      "categoryId": "cat_fx_trade_ops",
+      "canonical": "International Trade",
+      "aliases": ["comercio internacional", "international trade"]
+    },
+    {
+      "id": "kw_usa_market",
+      "categoryId": "cat_intl_market_presence",
+      "canonical": "USA Market",
+      "aliases": ["clientes en usa", "mercado usa", "usa market", "us market"]
+    },
+    {
+      "id": "kw_uk_market",
+      "categoryId": "cat_intl_market_presence",
+      "canonical": "UK Market",
+      "aliases": ["clientes en uk", "mercado uk", "uk market"]
+    },
+    {
+      "id": "kw_latam",
+      "categoryId": "cat_intl_market_presence",
+      "canonical": "LATAM",
+      "aliases": ["latam", "latinoamerica", "mexico", "colombia", "chile"]
+    },
+    {
+      "id": "kw_international_clients",
+      "categoryId": "cat_intl_market_presence",
+      "canonical": "International Clients",
+      "aliases": [
+        "clientes internacionales",
+        "international customers",
+        "global customers"
+      ]
+    },
+    {
+      "id": "kw_emea",
+      "categoryId": "cat_intl_market_presence",
+      "canonical": "EMEA",
+      "aliases": ["emea"]
+    },
+    {
+      "id": "kw_treasury",
+      "categoryId": "cat_biz_finance_ops",
+      "canonical": "Treasury",
+      "aliases": ["treasury", "tesoreria"]
+    },
+    {
+      "id": "kw_finance_ops",
+      "categoryId": "cat_biz_finance_ops",
+      "canonical": "Finance Operations",
+      "aliases": ["operaciones financieras", "finance operations"]
+    },
+    {
+      "id": "kw_ecommerce_international",
+      "categoryId": "cat_biz_ecommerce_marketplace",
+      "canonical": "International Ecommerce",
+      "aliases": [
+        "ecommerce internacional",
+        "ventas internacionales",
+        "international sales"
+      ]
+    },
+    {
+      "id": "kw_marketplace",
+      "categoryId": "cat_biz_ecommerce_marketplace",
+      "canonical": "Marketplace",
+      "aliases": ["marketplace", "marketplaces"]
+    },
+    {
+      "id": "kw_subscriptions",
+      "categoryId": "cat_biz_saas_international",
+      "canonical": "Subscriptions",
+      "aliases": ["subscriptions", "suscripciones", "recurring revenue"]
+    },
+    {
+      "id": "kw_saas",
+      "categoryId": "cat_biz_saas_international",
+      "canonical": "SaaS",
+      "aliases": ["saas", "software as a service"]
     },
     {
       "id": "kw_stripe",
-      "categoryId": "cat_payments",
+      "categoryId": "cat_proxy_payment_stack",
       "canonical": "Stripe",
       "aliases": ["stripe", "stripe payments"]
     },
     {
       "id": "kw_adyen",
-      "categoryId": "cat_payments",
+      "categoryId": "cat_proxy_payment_stack",
       "canonical": "Adyen",
       "aliases": ["adyen"]
     },
     {
       "id": "kw_paypal",
-      "categoryId": "cat_payments",
+      "categoryId": "cat_proxy_payment_stack",
       "canonical": "PayPal",
       "aliases": ["paypal", "braintree"]
     },
     {
+      "id": "kw_aws",
+      "categoryId": "cat_proxy_cloud_stack",
+      "canonical": "AWS",
+      "aliases": ["aws", "amazon web services", "ec2", "s3", "lambda"]
+    },
+    {
+      "id": "kw_gcp",
+      "categoryId": "cat_proxy_cloud_stack",
+      "canonical": "GCP",
+      "aliases": ["gcp", "google cloud", "google cloud platform"]
+    },
+    {
+      "id": "kw_azure",
+      "categoryId": "cat_proxy_cloud_stack",
+      "canonical": "Azure",
+      "aliases": ["azure", "microsoft azure"]
+    },
+    {
+      "id": "kw_google_ads",
+      "categoryId": "cat_proxy_growth_stack",
+      "canonical": "Google Ads",
+      "aliases": ["google ads", "adwords", "google adwords"]
+    },
+    {
+      "id": "kw_meta_ads",
+      "categoryId": "cat_proxy_growth_stack",
+      "canonical": "Meta Ads",
+      "aliases": ["meta ads", "facebook ads", "instagram ads"]
+    },
+    {
+      "id": "kw_tiktok_ads",
+      "categoryId": "cat_proxy_growth_stack",
+      "canonical": "TikTok Ads",
+      "aliases": ["tiktok ads", "tiktok for business"]
+    },
+    {
       "id": "kw_salesforce",
-      "categoryId": "cat_crm",
+      "categoryId": "cat_proxy_growth_stack",
       "canonical": "Salesforce",
       "aliases": ["salesforce", "sfdc"]
     },
     {
       "id": "kw_hubspot",
-      "categoryId": "cat_crm",
+      "categoryId": "cat_proxy_growth_stack",
       "canonical": "HubSpot",
       "aliases": ["hubspot"]
-    },
-    {
-      "id": "kw_tableau",
-      "categoryId": "cat_analytics",
-      "canonical": "Tableau",
-      "aliases": ["tableau"]
-    },
-    {
-      "id": "kw_powerbi",
-      "categoryId": "cat_analytics",
-      "canonical": "Power BI",
-      "aliases": ["power bi", "powerbi"]
-    },
-    {
-      "id": "kw_slack",
-      "categoryId": "cat_collaboration",
-      "canonical": "Slack",
-      "aliases": ["slack"]
-    },
-    {
-      "id": "kw_jira",
-      "categoryId": "cat_collaboration",
-      "canonical": "Jira",
-      "aliases": ["jira", "atlassian jira"]
     }
   ],
   "phrases": [
     {
       "id": "phrase_usd",
       "phrase": "USD",
+      "tier": 3
+    },
+    {
+      "id": "phrase_gbp",
+      "phrase": "GBP",
+      "tier": 3
+    },
+    {
+      "id": "phrase_eur",
+      "phrase": "EUR",
+      "tier": 3
+    },
+    {
+      "id": "phrase_mxn",
+      "phrase": "MXN",
+      "tier": 3
+    },
+    {
+      "id": "phrase_brl",
+      "phrase": "BRL",
       "tier": 3
     },
     {
@@ -141,14 +311,39 @@
       "tier": 3
     },
     {
+      "id": "phrase_forex",
+      "phrase": "foreign exchange",
+      "tier": 3
+    },
+    {
+      "id": "phrase_crossborder_transfers",
+      "phrase": "transferencias internacionales",
+      "tier": 3
+    },
+    {
+      "id": "phrase_currency_exchange",
+      "phrase": "cambio de divisa",
+      "tier": 3
+    },
+    {
       "id": "phrase_global_expansion",
       "phrase": "expansión internacional",
       "tier": 2
     },
     {
-      "id": "phrase_forex",
-      "phrase": "foreign exchange",
-      "tier": 3
+      "id": "phrase_international_sales",
+      "phrase": "ventas internacionales",
+      "tier": 2
+    },
+    {
+      "id": "phrase_global_clients",
+      "phrase": "clientes globales",
+      "tier": 2
+    },
+    {
+      "id": "phrase_international_market",
+      "phrase": "mercado internacional",
+      "tier": 2
     }
   ]
 }

@@ -40,15 +40,26 @@ export const FIELD_WEIGHTS: Record<string, number> = {
 };
 
 /**
- * Points added per unique phrase match.
+ * Points added per unique phrase match, weighted by phrase tier.
  *
  * Phrases provide independent boosts (e.g., "USD", "multidivisa").
  * Multiple occurrences of the same phrase count as 1.
  *
- * TODO: Initial default pending production data calibration.
- * TODO: Review phrase tier differentiation from catalog.
- * Current implementation treats all phrase tiers equally.
- * See docs/M2/01_define_keyword_system.md for phrase semantics.
+ * Tier 3 (strong direct FX signal): USD, multidivisa, foreign exchange
+ * Tier 2 (moderate signal): expansión internacional
+ * Tier 1 (weak signal): contextual phrases
+ *
+ * Scoring V2 - Increment 1: Phrase tier weighting implemented.
+ */
+export const PHRASE_TIER_WEIGHTS: Record<1 | 2 | 3, number> = {
+  3: 2.0, // Strong direct FX signal
+  2: 1.2, // Moderate signal
+  1: 0.6, // Weak/contextual signal
+};
+
+/**
+ * @deprecated Use PHRASE_TIER_WEIGHTS instead.
+ * Kept for reference during transition.
  */
 export const PHRASE_BOOST_POINTS = 1.5;
 
@@ -75,3 +86,13 @@ export const MIN_SCORE = 0;
  * Per docs/M4/01_define_agg_strategy.md: initially 6.
  */
 export const STRONG_THRESHOLD = 6;
+
+/**
+ * Maximum score allowed without direct FX signal.
+ *
+ * Business invariant: Without direct FX indicators, scores must not exceed 5.0.
+ * Direct FX signal = phrase with tier 3.
+ *
+ * Scoring V2 - Increment 1: No-FX guard cap.
+ */
+export const NO_FX_MAX_SCORE = 5.0;
