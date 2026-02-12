@@ -20,8 +20,11 @@ import type {
   RegisteredQuery,
   ErrorClassification,
   SearchOffersQuery,
+  Task,
+  TaskContext,
 } from "@/types";
 import { ALL_QUERIES } from "@/queries";
+import { ALL_TASKS } from "@/tasks";
 import { openDb, closeDb, runMigrations } from "@/db";
 import {
   getQueryState,
@@ -393,6 +396,55 @@ export async function runOnce(): Promise<{
       let failedCount = 0;
       let skippedCount = 0;
 
+      // Execute tasks sequentially (if any)
+      if (ALL_TASKS.length > 0) {
+        logger.debug("Executing tasks", { taskCount: ALL_TASKS.length });
+
+        const taskContext: TaskContext = {
+          ownerId,
+          logger,
+        };
+
+        for (const task of ALL_TASKS) {
+          try {
+            // Check if task should run
+            if (task.shouldRun) {
+              const shouldRun = await task.shouldRun(taskContext);
+              if (!shouldRun) {
+                logger.debug("Task skipped (shouldRun returned false)", {
+                  taskKey: task.taskKey,
+                  name: task.name,
+                });
+                skippedCount++;
+                continue;
+              }
+            }
+
+            logger.debug("Executing task", {
+              taskKey: task.taskKey,
+              name: task.name,
+            });
+
+            await task.runOnce(taskContext);
+
+            logger.debug("Task completed", {
+              taskKey: task.taskKey,
+              name: task.name,
+            });
+            successCount++;
+          } catch (error) {
+            failedCount++;
+            logger.error("Task execution failed", {
+              taskKey: task.taskKey,
+              name: task.name,
+              error: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : undefined,
+            });
+            // Continue with next task (tasks are independent)
+          }
+        }
+      }
+
       // Execute queries sequentially
       for (let i = 0; i < ALL_QUERIES.length; i++) {
         const query = ALL_QUERIES[i];
@@ -436,7 +488,7 @@ export async function runOnce(): Promise<{
         .slice(0, 2);
 
       logger.info("Runner completed (single pass)", {
-        total: ALL_QUERIES.length,
+        total: ALL_TASKS.length + ALL_QUERIES.length,
         success: successCount,
         failed: failedCount,
         skipped: skippedCount,
@@ -459,7 +511,7 @@ export async function runOnce(): Promise<{
       });
 
       return {
-        total: ALL_QUERIES.length,
+        total: ALL_TASKS.length + ALL_QUERIES.length,
         success: successCount,
         failed: failedCount,
         skipped: skippedCount,
