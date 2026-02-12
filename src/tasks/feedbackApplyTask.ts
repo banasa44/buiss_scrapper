@@ -14,6 +14,8 @@ import { GoogleSheetsClient } from "@/clients/googleSheets";
 import {
   processSheetsFeedback,
   applyValidatedFeedbackPlanToDb,
+  readModelFeedbackFromSheet,
+  persistModelFeedbackEvents,
 } from "@/sheets";
 import { GOOGLE_SHEETS_SPREADSHEET_ID_ENV } from "@/constants/clients/googleSheets";
 
@@ -134,5 +136,31 @@ export const FeedbackApplyTask: Task = {
         invalidRows: feedbackResult.feedbackReadResult!.invalidRows,
       },
     });
+
+    // Process model performance feedback (K/L columns)
+    // Window gate already checked above; shares same nightly window
+    ctx.logger.info("Reading model performance feedback");
+    const modelFeedbackResult = await readModelFeedbackFromSheet(client);
+
+    if (modelFeedbackResult.validRows > 0) {
+      ctx.logger.info("Persisting model feedback events to database");
+      const persistResult = persistModelFeedbackEvents(
+        modelFeedbackResult.events,
+      );
+
+      ctx.logger.info("Model feedback persistence complete", {
+        totalRowsWithFeedback: modelFeedbackResult.totalRows,
+        validRows: modelFeedbackResult.validRows,
+        invalidRows: modelFeedbackResult.invalidRows,
+        attempted: persistResult.attempted,
+        persisted: persistResult.persisted,
+        duplicatesIgnored: persistResult.attempted - persistResult.persisted,
+        failed: persistResult.failed,
+      });
+    } else {
+      ctx.logger.info("No model feedback to persist", {
+        totalRowsWithFeedback: modelFeedbackResult.totalRows,
+      });
+    }
   },
 };

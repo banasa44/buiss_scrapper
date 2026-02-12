@@ -262,3 +262,30 @@ export type ApplyFeedbackResult = {
   /** Number of companies where offer deletion failed (logged as warnings) */
   offerDeletionsFailed: number;
 };
+
+/**
+ * Company feedback event from model performance feedback
+ * Represents a single feedback entry from MODEL_FEEDBACK and MODEL_NOTES columns
+ */
+export type CompanyFeedbackEvent = {
+  /** Auto-generated ID */
+  id: number;
+  /** Company ID this feedback is about */
+  companyId: number;
+  /** 1-based row index in sheet (2+ for data rows, used for idempotency) */
+  sheetRowIndex: number;
+  /** Feedback value from MODEL_FEEDBACK column (e.g., "FP", "FN", "OK") */
+  feedbackValue: string;
+  /** Optional notes from MODEL_NOTES column */
+  notes: string | null;
+  /** Timestamp when feedback was recorded */
+  createdAt: Date;
+};
+
+/**
+ * Input for creating a new feedback event (omits auto-generated fields)
+ */
+export type NewCompanyFeedbackEvent = Omit<
+  CompanyFeedbackEvent,
+  "id" | "createdAt"
+>;

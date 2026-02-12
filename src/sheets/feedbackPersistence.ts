@@ -9,8 +9,10 @@
  */
 
 import type { ValidatedFeedbackPlan, ApplyFeedbackResult } from "@/types";
+import type { NewCompanyFeedbackEvent } from "@/types";
 import { updateCompanyResolution } from "@/db/repos/companiesRepo";
 import { deleteOffersByCompanyId } from "@/db/repos/offersRepo";
+import { insertCompanyFeedbackEvent } from "@/db/repos/feedbackEventsRepo";
 import * as logger from "@/logger";
 
 /**
@@ -122,6 +124,67 @@ export function applyValidatedFeedbackPlanToDb(
 
   // Note: Final audit logging done in runOfferBatch.ts per BUILD-11
   // (comprehensive feedback section log with all counters)
+
+  return result;
+}
+
+/**
+ * Result of persisting model feedback events to database
+ */
+export type PersistModelFeedbackResult = {
+  /** Total number of feedback events attempted to persist */
+  attempted: number;
+  /** Number of events successfully persisted */
+  persisted: number;
+  /** Number of events that failed to persist */
+  failed: number;
+};
+
+/**
+ * Persist model performance feedback events to database
+ *
+ * Inserts feedback events from MODEL_FEEDBACK and MODEL_NOTES columns
+ * into the company_feedback_events table.
+ *
+ * Best-effort behavior:
+ * - Individual failures are logged as warnings but do not stop processing
+ * - Returns structured counters for observability
+ * - NOT idempotent: each call creates new events (by design for time-series tracking)
+ *
+ * @param events - Array of feedback events to persist
+ * @returns Structured result with counters
+ */
+export function persistModelFeedbackEvents(
+  events: NewCompanyFeedbackEvent[],
+): PersistModelFeedbackResult {
+  const result: PersistModelFeedbackResult = {
+    attempted: 0,
+    persisted: 0,
+    failed: 0,
+  };
+
+  for (const event of events) {
+    result.attempted++;
+
+    try {
+      insertCompanyFeedbackEvent(event);
+      result.persisted++;
+    } catch (err) {
+      // Best-effort: log warning and continue
+      result.failed++;
+      logger.warn("Failed to persist model feedback event", {
+        companyId: event.companyId,
+        feedbackValue: event.feedbackValue,
+        error: String(err),
+      });
+    }
+  }
+
+  logger.info("Model feedback persistence complete", {
+    attempted: result.attempted,
+    persisted: result.persisted,
+    failed: result.failed,
+  });
 
   return result;
 }

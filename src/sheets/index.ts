@@ -14,4 +14,5 @@ export * from "./feedbackValidation";
 export * from "./feedbackWindow";
 export * from "./processSheetsFeedback";
 export * from "./feedbackPersistence";
+export * from "./feedbackReader";
 export * from "./headerEnforcer";
