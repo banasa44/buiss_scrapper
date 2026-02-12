@@ -29,7 +29,27 @@ import {
   PHRASE_TIER_WEIGHTS,
   MAX_SCORE,
   NO_FX_MAX_SCORE,
+  BUCKET_CAPS,
+  FX_CORE_THRESHOLD,
 } from "@/constants/scoring";
+import type { BucketId, BucketScores } from "@/types/scoring";
+
+/**
+ * Classifies a category into a bucket based on its ID prefix.
+ *
+ * Scoring V2 - Increment 3: Bucket classification.
+ *
+ * @param categoryId - Category identifier
+ * @returns Bucket identifier
+ */
+function classifyBucket(categoryId: string): BucketId {
+  if (categoryId.startsWith("cat_fx_")) return "direct_fx";
+  if (categoryId.startsWith("cat_intl_")) return "intl_footprint";
+  if (categoryId.startsWith("cat_biz_")) return "business_model";
+  if (categoryId.startsWith("cat_proxy_")) return "tech_proxy";
+  // Default: treat unknown categories as tech_proxy (conservative)
+  return "tech_proxy";
+}
 
 /**
  * Aggregates keyword hits by category to enforce "max 1 hit per category" rule.
@@ -195,27 +215,57 @@ export function scoreOffer(
     catalog,
   );
 
-  // Compute raw score
-  const categoryPoints = categoryContributions.reduce(
-    (sum, c) => sum + c.points,
-    0,
-  );
+  // Scoring V2 - Increment 3: Bucketed scoring
+  // Sum category points into buckets (before caps)
+  const uncappedBuckets: Record<BucketId, number> = {
+    direct_fx: 0,
+    intl_footprint: 0,
+    business_model: 0,
+    tech_proxy: 0,
+  };
+
+  for (const contrib of categoryContributions) {
+    const bucket = classifyBucket(contrib.categoryId);
+    uncappedBuckets[bucket] += contrib.points;
+  }
+
+  // Determine fxCore flag (BEFORE applying caps)
+  const fxCore = uncappedBuckets.direct_fx >= FX_CORE_THRESHOLD;
+
+  // Apply bucket caps
+  const bucketScores: BucketScores = {
+    direct_fx: Math.min(uncappedBuckets.direct_fx, BUCKET_CAPS.direct_fx),
+    intl_footprint: Math.min(
+      uncappedBuckets.intl_footprint,
+      BUCKET_CAPS.intl_footprint,
+    ),
+    business_model: Math.min(
+      uncappedBuckets.business_model,
+      BUCKET_CAPS.business_model,
+    ),
+    tech_proxy: Math.min(uncappedBuckets.tech_proxy, BUCKET_CAPS.tech_proxy),
+  };
+
+  // Sum capped buckets + phrase points = raw score
+  const cappedCategoryPoints =
+    bucketScores.direct_fx +
+    bucketScores.intl_footprint +
+    bucketScores.business_model +
+    bucketScores.tech_proxy;
+
   const phrasePoints = phraseContributions.reduce(
     (sum, p) => sum + p.points,
     0,
   );
-  let rawScore = categoryPoints + phrasePoints;
 
-  // Scoring V2 - Increment 1: No-FX guard
-  // Without direct FX signal, cap score at 5.0
-  // Direct FX = any phrase with tier 3
-  const hasDirectFX = activePhraseHits.some((hit) => {
-    const phrase = catalog.phrases.find((p) => p.id === hit.phraseId);
-    return phrase?.tier === 3;
-  });
+  let rawScore = cappedCategoryPoints + phrasePoints;
 
-  if (!hasDirectFX) {
+  // Scoring V2 - Increment 3: No-FX guard based on fxCore
+  // Without fxCore evidence, cap score at 5.0
+  let appliedNoFxGuard = false;
+  if (!fxCore) {
     rawScore = Math.min(rawScore, NO_FX_MAX_SCORE);
+    appliedNoFxGuard = true;
   }
 
   // Clamp and round to integer
@@ -236,6 +286,9 @@ export function scoreOffer(
       uniqueKeywords: matchResult.uniqueKeywords,
       negatedKeywordHits,
       negatedPhraseHits,
+      bucketScores,
+      fxCore,
+      appliedNoFxGuard,
     },
   };
 }

@@ -58,12 +58,6 @@ export const PHRASE_TIER_WEIGHTS: Record<1 | 2 | 3, number> = {
 };
 
 /**
- * @deprecated Use PHRASE_TIER_WEIGHTS instead.
- * Kept for reference during transition.
- */
-export const PHRASE_BOOST_POINTS = 1.5;
-
-/**
  * Maximum allowed score (inclusive).
  *
  * Raw scores are clamped to this range: [0, MAX_SCORE].
@@ -96,3 +90,28 @@ export const STRONG_THRESHOLD = 6;
  * Scoring V2 - Increment 1: No-FX guard cap.
  */
 export const NO_FX_MAX_SCORE = 5.0;
+
+/**
+ * Bucket caps for category scoring.
+ *
+ * After aggregating category contributions, points are summed by bucket
+ * and capped to prevent any single bucket from dominating.
+ *
+ * Scoring V2 - Increment 3: Bucketed scoring.
+ */
+export const BUCKET_CAPS = {
+  direct_fx: 7.0, // FX & currency operations (cat_fx_*)
+  intl_footprint: 3.0, // International market presence (cat_intl_*)
+  business_model: 2.5, // Business operations (cat_biz_*)
+  tech_proxy: 1.5, // Tech stack proxies (cat_proxy_*)
+} as const;
+
+/**
+ * Minimum direct_fx bucket score to qualify as fxCore.
+ *
+ * When uncapped direct_fx bucket total >= FX_CORE_THRESHOLD,
+ * the offer is considered to have strong FX evidence (fxCore = true).
+ *
+ * Scoring V2 - Increment 3: fxCore flag.
+ */
+export const FX_CORE_THRESHOLD = 2.0;

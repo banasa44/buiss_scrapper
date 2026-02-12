@@ -35,6 +35,29 @@ export type PhraseContribution = {
 };
 
 /**
+ * Bucket identifier for category classification.
+ *
+ * Scoring V2 - Increment 3: Bucketed scoring.
+ */
+export type BucketId =
+  | "direct_fx"
+  | "intl_footprint"
+  | "business_model"
+  | "tech_proxy";
+
+/**
+ * Bucket score breakdown.
+ *
+ * Shows the capped subtotal for each bucket.
+ */
+export type BucketScores = {
+  direct_fx: number;
+  intl_footprint: number;
+  business_model: number;
+  tech_proxy: number;
+};
+
+/**
  * Scoring explanation and breakdown.
  *
  * Makes the score auditable by showing all contributions
@@ -57,6 +80,12 @@ export type ScoreReason = {
   negatedKeywordHits: number;
   /** Number of phrase hits excluded due to negation */
   negatedPhraseHits: number;
+  /** Bucket scores after caps (Scoring V2 - Increment 3) */
+  bucketScores?: BucketScores;
+  /** Whether offer has strong FX evidence (Scoring V2 - Increment 3) */
+  fxCore?: boolean;
+  /** Whether no-FX guard was applied (Scoring V2 - Increment 3) */
+  appliedNoFxGuard?: boolean;
 };
 
 /**
