@@ -161,17 +161,17 @@ X6LloxV8OuZpUXhq0/ihp0JY
         };
       }
 
-      // Header range read (enforcer check)
+      // Header range read (enforcer check) - now 12 columns (A-L)
       if (
-        (urlString.includes("Companies!A1:J1") ||
-          urlString.includes("Companies!A1%3AJ1")) &&
+        (urlString.includes("Companies!A1:L1") ||
+          urlString.includes("Companies!A1%3AL1")) &&
         method === "GET"
       ) {
         return {
           ok: true,
           status: 200,
           json: async () => ({
-            range: "Companies!A1:J1",
+            range: "Companies!A1:L1",
             majorDimension: "ROWS",
             values: [COMPANY_SHEET_HEADERS], // Header already exists (no write needed)
           }),

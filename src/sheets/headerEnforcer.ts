@@ -32,8 +32,8 @@ import * as logger from "@/logger";
 export async function enforceCompanySheetHeader(
   client: GoogleSheetsClient,
 ): Promise<void> {
-  // Derive header range dynamically from contract (A1:J1 for 10 columns)
-  const lastColumn = String.fromCharCode(65 + COMPANY_SHEET_COLUMNS.length - 1); // 'A' + 9 = 'J'
+  // Derive header range dynamically from contract (A1:L1 for 12 columns)
+  const lastColumn = String.fromCharCode(65 + COMPANY_SHEET_COLUMNS.length - 1); // 'A' + 11 = 'L'
   const headerRange = `${COMPANY_SHEET_NAME}!A1:${lastColumn}1`;
 
   logger.debug("Enforcing Companies sheet header contract", { headerRange });
