@@ -89,6 +89,23 @@ export function getOfferById(id: number): Offer | undefined {
 }
 
 /**
+ * Get offer provider_url by id
+ *
+ * Lightweight query for export layer to fetch only the URL field.
+ * Returns null if offer doesn't exist or has no URL.
+ *
+ * @param id - Offer ID
+ * @returns provider_url string or null
+ */
+export function getOfferUrlById(id: number): string | null {
+  const db = getDb();
+  const row = db
+    .prepare("SELECT provider_url FROM offers WHERE id = ?")
+    .get(id) as { provider_url: string | null } | undefined;
+  return row?.provider_url ?? null;
+}
+
+/**
  * Get offer by provider and provider_offer_id
  */
 export function getOfferByProviderId(

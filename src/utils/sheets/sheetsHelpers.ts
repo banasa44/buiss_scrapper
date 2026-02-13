@@ -33,14 +33,14 @@ export function colIndexToLetter(index: number): string {
 /**
  * Extract metric columns from a full sheet row array
  *
- * Given a full row (10 columns: company_id, company_name, resolution, + 7 metrics),
- * extracts only the metric columns (indices 3-9).
+ * Given a full row (11 columns: company_id, company_name, resolution, + 8 metrics),
+ * extracts only the metric columns (indices 3-10).
  *
  * This is used during updates to preserve client-controlled columns
  * (company_id, company_name, resolution) while updating only DB-sourced metrics.
  *
- * @param fullRow - Full row array from mapCompanyToSheetRow (10 elements)
- * @returns Array of metric values only (7 elements)
+ * @param fullRow - Full row array from mapCompanyToSheetRow (11 elements)
+ * @returns Array of metric values only (8 elements)
  */
 export function extractMetricSlice(
   fullRow: (string | number)[],
@@ -54,8 +54,8 @@ export function extractMetricSlice(
 /**
  * Generate A1 range notation for updating a single row's metrics
  *
- * Produces range like "Companies!D2:J2" for row 2.
- * Range spans only metric columns (D-J), excluding company_id, name, and resolution.
+ * Produces range like "Companies!D2:K2" for row 2.
+ * Range spans only metric columns (D-K), excluding company_id, name, and resolution.
  *
  * @param rowIndex - 1-based row index in the sheet (2+ for data rows)
  * @returns A1 range string for metric columns

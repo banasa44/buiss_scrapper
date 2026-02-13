@@ -11,7 +11,7 @@ import type {
   UpdateCompaniesResult,
   UpdateOperation,
 } from "@/types";
-import { listAllCompanies } from "@/db";
+import { listAllCompanies, getOfferUrlById } from "@/db";
 import { readCompanySheet } from "./sheetReader";
 import { mapCompanyToSheetRow } from "./companyRowMapper";
 import { extractMetricSlice, buildMetricUpdateRange } from "@/utils";
@@ -89,8 +89,13 @@ export async function updateCompanyMetricsInSheet(
     if (!sheetRow) continue; // Should never happen, but defensive
 
     try {
-      const fullRow = mapCompanyToSheetRow(company, catalog);
-      // Extract metric columns only (indices 3-9)
+      // Fetch top offer URL if top_offer_id exists
+      const topOfferUrl = company.top_offer_id
+        ? getOfferUrlById(company.top_offer_id)
+        : null;
+
+      const fullRow = mapCompanyToSheetRow(company, catalog, topOfferUrl);
+      // Extract metric columns only (indices 3-10)
       const metricValues = extractMetricSlice(fullRow);
 
       updateOps.push({

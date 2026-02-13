@@ -40,9 +40,10 @@ export const COMPANY_SHEET_HEADER_RANGE = `${COMPANY_SHEET_NAME}!A${COMPANY_SHEE
  * This is the SINGLE SOURCE OF TRUTH for the sheet layout.
  * All column indices, headers, and properties are derived from this constant.
  *
- * Schema order (12 columns A-L):
+ * Schema order (13 columns A-M):
  * Per BUILD-3B1 and AUDIT_04 specifications
- * Columns K-L added for model performance feedback
+ * Columns L-M added for model performance feedback
+ * Column K added for top_offer_url (clickable offer link)
  *
  * Headers are in Spanish for commercial-facing sheets.
  * resolution, model_feedback, and model_notes are editable by humans.
@@ -99,6 +100,11 @@ export const COMPANY_SHEET_COLUMNS = [
     isEditableByHuman: false,
   },
   {
+    id: "top_offer_url",
+    header: "URL Oferta Top",
+    isEditableByHuman: false,
+  },
+  {
     id: "model_feedback",
     header: "Feedback Modelo",
     isEditableByHuman: true, // Client feedback for model performance
@@ -145,15 +151,15 @@ export const COMPANY_SHEET_FIRST_METRIC_COL_INDEX =
 
 /**
  * Last metric column index (0-based)
- * Corresponds to last_strong_at (column J, index 9)
+ * Corresponds to top_offer_url (column K, index 10)
  */
 export const COMPANY_SHEET_LAST_METRIC_COL_INDEX =
-  COMPANY_SHEET_COL_INDEX.last_strong_at;
+  COMPANY_SHEET_COL_INDEX.top_offer_url;
 
 /**
- * Number of metric columns to update (columns 4-10 in 1-based, indices 3-9)
+ * Number of metric columns to update (columns 4-11 in 1-based, indices 3-10)
  */
-export const COMPANY_SHEET_METRIC_COL_COUNT = 7;
+export const COMPANY_SHEET_METRIC_COL_COUNT = 8;
 
 /**
  * Valid resolution enum values

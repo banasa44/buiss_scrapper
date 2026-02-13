@@ -8,7 +8,7 @@
  */
 
 import type { CatalogRuntime, ExportPlan } from "@/types";
-import { listAllCompanies } from "@/db";
+import { listAllCompanies, getOfferUrlById } from "@/db";
 import { mapCompanyToSheetRow } from "./companyRowMapper";
 import { warn } from "@/logger";
 
@@ -35,7 +35,12 @@ export function buildExportPlan(catalog: CatalogRuntime): ExportPlan {
 
   for (const company of companies) {
     try {
-      const row = mapCompanyToSheetRow(company, catalog);
+      // Fetch top offer URL if top_offer_id exists
+      const topOfferUrl = company.top_offer_id
+        ? getOfferUrlById(company.top_offer_id)
+        : null;
+
+      const row = mapCompanyToSheetRow(company, catalog, topOfferUrl);
       rowsForAppend.push(row);
     } catch (err) {
       // Skip unmappable companies (log + continue)

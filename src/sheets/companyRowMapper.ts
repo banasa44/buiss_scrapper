@@ -18,7 +18,7 @@ import {
 /**
  * Map Company DB row to Google Sheets row array
  *
- * Schema order (10 columns):
+ * Schema order (11 columns):
  * 1. company_id - Company ID (integer)
  * 2. company_name - Display name with fallback chain
  * 3. resolution - Client feedback (default: "PENDING")
@@ -29,19 +29,23 @@ import {
  * 8. avg_strong_score - Average score of strong offers (1 decimal)
  * 9. top_category - Human-readable category label
  * 10. last_strong_at - Most recent strong offer date (YYYY-MM-DD)
+ * 11. top_offer_url - URL of highest-scoring offer (clickable link)
  *
  * Null handling:
  * - Numeric metrics: empty string if null
  * - Category: empty string if null or lookup fails
  * - Timestamp: empty string if null
+ * - URL: empty string if null or not provided
  *
  * @param company - Company DB entity with aggregation signals
  * @param catalog - Compiled catalog for category label resolution
+ * @param topOfferUrl - Optional URL of the top-scoring offer (from export layer)
  * @returns Array of primitive values suitable for Sheets API
  */
 export function mapCompanyToSheetRow(
   company: Company,
   catalog: CatalogRuntime,
+  topOfferUrl?: string | null,
 ): (string | number)[] {
   // 1. company_id (always present, primary key)
   const companyId = company.id;
@@ -74,6 +78,9 @@ export function mapCompanyToSheetRow(
   // 10. last_strong_at (extract date only YYYY-MM-DD, empty if null)
   const lastStrongAt = formatDateOnly(company.last_strong_at);
 
+  // 11. top_offer_url (clickable URL or empty if not available)
+  const topOfferUrlValue = topOfferUrl ?? "";
+
   return [
     companyId,
     companyName,
@@ -85,6 +92,7 @@ export function mapCompanyToSheetRow(
     avgStrongScore,
     topCategory,
     lastStrongAt,
+    topOfferUrlValue,
   ];
 }
 

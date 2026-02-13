@@ -7,7 +7,7 @@
 
 import type { GoogleSheetsClient } from "@/clients/googleSheets";
 import type { CatalogRuntime, AppendCompaniesResult } from "@/types";
-import { listAllCompanies } from "@/db";
+import { listAllCompanies, getOfferUrlById } from "@/db";
 import { readCompanySheet } from "./sheetReader";
 import { mapCompanyToSheetRow } from "./companyRowMapper";
 import {
@@ -79,7 +79,12 @@ export async function appendNewCompaniesToSheet(
 
   for (const company of newCompanies) {
     try {
-      const row = mapCompanyToSheetRow(company, catalog);
+      // Fetch top offer URL if top_offer_id exists
+      const topOfferUrl = company.top_offer_id
+        ? getOfferUrlById(company.top_offer_id)
+        : null;
+
+      const row = mapCompanyToSheetRow(company, catalog, topOfferUrl);
       rowsToAppend.push(row);
       appendedCompanyIds.push(company.id);
     } catch (err) {

@@ -137,7 +137,7 @@ function buildHeaderMismatchError(
   const lines: string[] = [
     "Companies sheet header does not match contract.",
     "",
-    "Expected headers (10 columns A-J):",
+    "Expected headers (13 columns A-M):",
     `  ${expected.join(" | ")}`,
     "",
     `Actual headers (${actual.length} columns):`,
