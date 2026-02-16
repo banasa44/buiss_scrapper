@@ -11,6 +11,10 @@ import { listAllCompanies, getOfferUrlById } from "@/db";
 import { readCompanySheet } from "./sheetReader";
 import { mapCompanyToSheetRow } from "./companyRowMapper";
 import {
+  COMPANY_SHEET_NAME,
+  COMPANY_SHEET_FIRST_DATA_ROW,
+  COMPANY_SHEET_COLUMNS,
+  COMPANY_SHEET_COL_INDEX,
   COMPANY_SHEET_READ_RANGE,
   SHEETS_APPEND_BATCH_SIZE,
 } from "@/constants";
@@ -25,11 +29,13 @@ import { info, warn, error } from "@/logger";
  * 3. Filter to companies not present in sheet
  * 4. Map each to sheet row format
  * 5. Append in batches
- * 6. Return summary statistics
+ * 6. Propagate template formatting + validation to appended rows
+ * 7. Return summary statistics
  *
  * Error handling:
  * - Sheet read errors: return { ok: false } with error message
  * - Append errors: return { ok: false } with error message
+ * - Formatting/validation propagation errors: return { ok: false } with error message
  * - Mapping errors: log warning and skip individual company (continue)
  *
  * @param client - GoogleSheetsClient instance
@@ -43,6 +49,8 @@ export async function appendNewCompaniesToSheet(
   // Step 1: Read existing sheet index
   const sheetResult = await readCompanySheet(client);
   const existingCompanyIds = new Set(sheetResult.index.keys());
+  const existingDataRowsBeforeAppend =
+    sheetResult.validRows + sheetResult.skippedRows;
 
   info("Read company sheet index", {
     existingCompanies: existingCompanyIds.size,
@@ -151,7 +159,106 @@ export async function appendNewCompaniesToSheet(
     appendedCount += batch.length;
   }
 
-  // Step 6: Return summary
+  // Defensive no-op guard: avoid structural API calls when nothing was appended.
+  if (appendedCount === 0) {
+    info("No appended rows to propagate formatting/validation");
+    return {
+      ok: true,
+      appendedCount,
+      appendedCompanyIds: appendedCompanyIds.slice(0, appendedCount),
+      skippedCount: totalCompanies - newCompanies.length,
+      totalCompanies,
+    };
+  }
+
+  // Step 6: Propagate formatting + validation to appended rows
+  const templateSheetIdResult = await client.getSheetIdByTitle(
+    COMPANY_SHEET_NAME,
+  );
+
+  if (!templateSheetIdResult.ok) {
+    error(
+      "Failed to resolve Companies sheet id for append formatting propagation",
+      {
+        error: templateSheetIdResult.error,
+      },
+    );
+    return {
+      ok: false,
+      appendedCount,
+      appendedCompanyIds: appendedCompanyIds.slice(0, appendedCount),
+      skippedCount: totalCompanies - newCompanies.length,
+      totalCompanies,
+      error: `Failed to resolve sheet id for formatting propagation: ${templateSheetIdResult.error.message}`,
+    };
+  }
+
+  const { sheetId } = templateSheetIdResult.data;
+  const firstAppendedRow =
+    COMPANY_SHEET_FIRST_DATA_ROW + existingDataRowsBeforeAppend;
+  const lastAppendedRow = firstAppendedRow + appendedCount - 1;
+  const firstColumnIndex = COMPANY_SHEET_COL_INDEX.company_id;
+  const lastColumnExclusiveIndex = COMPANY_SHEET_COLUMNS.length;
+  const templateRowStartIndex = COMPANY_SHEET_FIRST_DATA_ROW - 1;
+
+  const sourceRange = {
+    sheetId,
+    startRowIndex: templateRowStartIndex,
+    endRowIndex: templateRowStartIndex + 1,
+    startColumnIndex: firstColumnIndex,
+    endColumnIndex: lastColumnExclusiveIndex,
+  };
+
+  const destinationRange = {
+    sheetId,
+    startRowIndex: firstAppendedRow - 1,
+    endRowIndex: lastAppendedRow,
+    startColumnIndex: firstColumnIndex,
+    endColumnIndex: lastColumnExclusiveIndex,
+  };
+
+  const propagateResult = await client.applySheetBatchUpdate([
+    {
+      copyPaste: {
+        source: sourceRange,
+        destination: destinationRange,
+        pasteType: "PASTE_FORMAT",
+      },
+    },
+    {
+      copyPaste: {
+        source: sourceRange,
+        destination: destinationRange,
+        pasteType: "PASTE_DATA_VALIDATION",
+      },
+    },
+  ]);
+
+  if (!propagateResult.ok) {
+    error("Failed to propagate formatting/validation to appended rows", {
+      firstAppendedRow,
+      lastAppendedRow,
+      appendedCount,
+      error: propagateResult.error,
+    });
+    return {
+      ok: false,
+      appendedCount,
+      appendedCompanyIds: appendedCompanyIds.slice(0, appendedCount),
+      skippedCount: totalCompanies - newCompanies.length,
+      totalCompanies,
+      error: `Failed to propagate formatting/validation for appended rows: ${propagateResult.error.message}`,
+    };
+  }
+
+  info("Propagated formatting/validation to appended rows", {
+    templateRow: COMPANY_SHEET_FIRST_DATA_ROW,
+    firstAppendedRow,
+    lastAppendedRow,
+    appendedCount,
+  });
+
+  // Step 7: Return summary
   info("Successfully appended companies to sheet", {
     appendedCount,
     skippedCount: totalCompanies - newCompanies.length,
