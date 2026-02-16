@@ -114,6 +114,33 @@ X6LloxV8OuZpUXhq0/ihp0JY
         "2026-02-06T09:30:00Z", // last_strong_at (NEW)
       ).lastInsertRowid as number;
 
+    // Deterministic top offer URL fixture for column H (URL Oferta Top)
+    const topOfferId = dbHarness.db
+      .prepare(
+        `
+      INSERT INTO offers (
+        provider, provider_offer_id, provider_url, company_id, title
+      ) VALUES (?, ?, ?, ?, ?)
+    `,
+      )
+      .run(
+        "infojobs",
+        "acme-top-offer-1",
+        "https://acme.example/jobs/top-1",
+        companyId,
+        "Senior Frontend Engineer",
+      ).lastInsertRowid as number;
+
+    dbHarness.db
+      .prepare(
+        `
+      UPDATE companies
+      SET top_offer_id = ?
+      WHERE id = ?
+    `,
+      )
+      .run(topOfferId, companyId);
+
     // Verify company in DB
     const companiesInDb = dbHarness.db
       .prepare("SELECT COUNT(*) as count FROM companies")
@@ -215,7 +242,7 @@ X6LloxV8OuZpUXhq0/ihp0JY
                 2, // Column E: Ofertas fuertes (OLD - should be updated to 5)
                 3, // Column F: Ofertas únicas (OLD - should be updated to 8)
                 8, // Column G: Actividad publicación (OLD - should be updated to 15)
-                "6.0", // Column H: Score medio fuerte (OLD - should be updated to 8.7)
+                "https://acme.example/jobs/old-top", // Column H: URL Oferta Top (OLD - should be updated to top offer URL)
                 "Backend", // Column I: Categoría principal (OLD - should be updated to Frontend)
                 "2026-02-05", // Column J: Última oferta fuerte (OLD - should be updated to 2026-02-06)
               ],
@@ -292,7 +319,7 @@ X6LloxV8OuZpUXhq0/ihp0JY
         // - strong_offer_count: 5
         // - unique_offer_count: 8
         // - posting_activity (offer_count): 15
-        // - avg_strong_score: "8.7" (formatted)
+        // - top_offer_url: "https://acme.example/jobs/top-1"
         // - top_category: "Frontend" (resolved from cat_frontend)
         // - last_strong_at: "2026-02-06" (date only)
         const expectedMetrics = [
@@ -300,7 +327,7 @@ X6LloxV8OuZpUXhq0/ihp0JY
           5,
           8,
           15,
-          "8.7",
+          "https://acme.example/jobs/top-1",
           "Frontend",
           "2026-02-06",
         ];
@@ -392,7 +419,7 @@ X6LloxV8OuZpUXhq0/ihp0JY
     expect(updatedMetrics[1]).toBe(5); // strong_offers (E) - NEW from DB
     expect(updatedMetrics[2]).toBe(8); // unique_offers (F) - NEW from DB
     expect(updatedMetrics[3]).toBe(15); // posting_activity (G) - NEW from DB
-    expect(updatedMetrics[4]).toBe("8.7"); // avg_strong_score (H) - NEW from DB
+    expect(updatedMetrics[4]).toBe("https://acme.example/jobs/top-1"); // top_offer_url (H) - NEW from DB
     expect(updatedMetrics[5]).toBe("Frontend"); // top_category (I) - NEW from DB
     expect(updatedMetrics[6]).toBe("2026-02-06"); // last_strong_at (J) - NEW from DB
 

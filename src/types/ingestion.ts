@@ -36,6 +36,7 @@ export type PersistCompanyInput = {
 export type OfferPersistResult =
   | { ok: true; offerId: number; companyId: number }
   | { ok: false; reason: "company_unidentifiable" }
+  | { ok: false; reason: "missing_provider_url" }
   | { ok: false; reason: "company_resolved"; companyId: number }
   | { ok: false; reason: "db_error"; companyId: number }
   | { ok: false; reason: "missing_description" }

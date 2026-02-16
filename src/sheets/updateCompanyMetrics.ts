@@ -95,7 +95,7 @@ export async function updateCompanyMetricsInSheet(
         : null;
 
       const fullRow = mapCompanyToSheetRow(company, catalog, topOfferUrl);
-      // Extract metric columns only (indices 3-10)
+      // Extract metric columns only (indices 3-9)
       const metricValues = extractMetricSlice(fullRow);
 
       updateOps.push({

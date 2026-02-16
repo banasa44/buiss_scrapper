@@ -2,8 +2,9 @@
  * Sheet Header Contract Enforcer
  *
  * Ensures the Companies sheet header row matches the expected contract.
- * - If empty/missing: writes the expected header row
- * - If mismatch: fails fast with clear error message
+ * Validation-only behavior:
+ * - Never mutates the sheet
+ * - Fails fast with clear error message on any mismatch
  *
  * This prevents silent data corruption from reading/writing against
  * a sheet with incorrect column order or labels.
@@ -21,13 +22,14 @@ import * as logger from "@/logger";
  * Enforce header contract for Companies sheet
  *
  * Validates that the sheet header row matches our contract (Spanish labels).
- * - If sheet is empty or header is missing: writes header row
- * - If header exists but differs: throws fatal error
+ * - If header is missing/empty: throws fatal error
+ * - If header differs: throws fatal error
  *
- * This must be called before any read/write operations on the Companies sheet.
+ * This function is validation-only and must not mutate the sheet.
+ * Header application/migration must be done explicitly via apply command/task.
  *
  * @param client - GoogleSheetsClient instance
- * @throws Error if header exists but doesn't match contract
+ * @throws Error if header is missing or doesn't match contract
  */
 export async function enforceCompanySheetHeader(
   client: GoogleSheetsClient,
@@ -48,30 +50,9 @@ export async function enforceCompanySheetHeader(
   }
 
   const values = readResult.data.values;
-  const currentHeader = values && values.length > 0 ? values[0] : null;
+  const currentHeader = values && values.length > 0 ? values[0] : [];
 
-  // Case 1: Header is missing or empty -> Write expected header
-  if (!currentHeader || currentHeader.length === 0) {
-    logger.info("Companies sheet header missing, writing expected header", {
-      expectedHeaders: COMPANY_SHEET_HEADERS,
-    });
-
-    const writeResult = await client.batchUpdate(
-      [COMPANY_SHEET_HEADERS],
-      headerRange,
-    );
-
-    if (!writeResult.ok) {
-      const errorMsg = `Failed to write Companies sheet header: ${writeResult.error.message}`;
-      logger.error(errorMsg, { error: writeResult.error });
-      throw new Error(errorMsg);
-    }
-
-    logger.info("Companies sheet header written successfully");
-    return;
-  }
-
-  // Case 2: Header exists -> Validate it matches contract
+  // Validate header contract strictly (validation-only, no mutations)
   const headerMatches = headersMatch(currentHeader, COMPANY_SHEET_HEADERS);
 
   if (!headerMatches) {
@@ -137,7 +118,7 @@ function buildHeaderMismatchError(
   const lines: string[] = [
     "Companies sheet header does not match contract.",
     "",
-    "Expected headers (13 columns A-M):",
+    "Expected headers (12 columns A-L):",
     `  ${expected.join(" | ")}`,
     "",
     `Actual headers (${actual.length} columns):`,

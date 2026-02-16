@@ -18,7 +18,7 @@ import {
 /**
  * Map Company DB row to Google Sheets row array
  *
- * Schema order (11 columns):
+ * Schema order (10 columns):
  * 1. company_id - Company ID (integer)
  * 2. company_name - Display name with fallback chain
  * 3. resolution - Client feedback (default: "PENDING")
@@ -26,10 +26,11 @@ import {
  * 5. strong_offers - Count of high-quality offers (score >= 6)
  * 6. unique_offers - Count of canonical offers
  * 7. posting_activity - Activity-weighted posting count
- * 8. avg_strong_score - Average score of strong offers (1 decimal)
+ * 8. top_offer_url - URL of highest-scoring offer (clickable link)
  * 9. top_category - Human-readable category label
  * 10. last_strong_at - Most recent strong offer date (YYYY-MM-DD)
- * 11. top_offer_url - URL of highest-scoring offer (clickable link)
+ *
+ * Note: avg_strong_score removed (replaced with top_offer_url for higher client value)
  *
  * Null handling:
  * - Numeric metrics: empty string if null
@@ -69,17 +70,14 @@ export function mapCompanyToSheetRow(
   // 7. posting_activity (renamed from offer_count, empty if null)
   const postingActivity = company.offer_count ?? "";
 
-  // 8. avg_strong_score (format with 1 decimal, empty if null)
-  const avgStrongScore = formatScore(company.avg_strong_score);
+  // 8. top_offer_url (clickable URL or empty if not available)
+  const topOfferUrlValue = topOfferUrl ?? "";
 
-  // 9. top_category (resolve to human-readable label, fallback to raw ID or empty)
+  // 9. top_category (resolve to human-readable label, fallback to empty)
   const topCategory = resolveCategoryLabel(company.top_category_id, catalog);
 
   // 10. last_strong_at (extract date only YYYY-MM-DD, empty if null)
   const lastStrongAt = formatDateOnly(company.last_strong_at);
-
-  // 11. top_offer_url (clickable URL or empty if not available)
-  const topOfferUrlValue = topOfferUrl ?? "";
 
   return [
     companyId,
@@ -89,10 +87,9 @@ export function mapCompanyToSheetRow(
     strongOffers,
     uniqueOffers,
     postingActivity,
-    avgStrongScore,
+    topOfferUrlValue,
     topCategory,
     lastStrongAt,
-    topOfferUrlValue,
   ];
 }
 
@@ -114,12 +111,11 @@ function formatScore(score: number | null): string {
  *
  * Fallback order:
  * 1. Catalog lookup (preferred)
- * 2. Raw category ID if lookup fails
- * 3. Empty string if category ID is null
+ * 2. Empty string if category ID is missing or lookup fails
  *
  * @param categoryId - Category ID from DB (nullable)
  * @param catalog - Compiled catalog with category map
- * @returns Human-readable label, raw ID, or empty string
+ * @returns Human-readable label or empty string
  */
 function resolveCategoryLabel(
   categoryId: string | null,
@@ -134,8 +130,8 @@ function resolveCategoryLabel(
     return category.name;
   }
 
-  // Fallback to raw ID if catalog lookup fails
-  return categoryId;
+  // Never expose internal IDs in client-facing sheet
+  return "";
 }
 
 /**

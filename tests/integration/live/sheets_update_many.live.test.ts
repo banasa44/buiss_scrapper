@@ -27,11 +27,19 @@ import { GoogleSheetsClient } from "@/clients/googleSheets";
 import { syncCompaniesToSheet } from "@/sheets/syncCompaniesToSheet";
 import { createTestDbSync, type TestDbHarness } from "../../helpers/testDb";
 import type { CatalogRuntime } from "@/types/catalog";
-import { COMPANY_SHEET_NAME } from "@/constants";
+import {
+  COMPANY_SHEET_NAME,
+  COMPANY_SHEET_COLUMNS,
+  COMPANY_SHEET_COL_INDEX,
+} from "@/constants";
+import { colIndexToLetter } from "@/utils";
+import { upsertOffer } from "@/db/repos/offersRepo";
 
 // Skip test if not explicitly enabled
 const isLiveTestEnabled = process.env.LIVE_SHEETS_TEST === "1";
 const describeIf = isLiveTestEnabled ? describe : describe.skip;
+const LAST_COMPANY_COL_LETTER = colIndexToLetter(COMPANY_SHEET_COLUMNS.length - 1);
+const COMPANY_SHEET_FULL_READ_RANGE = `${COMPANY_SHEET_NAME}!A:${LAST_COMPANY_COL_LETTER}`;
 
 describeIf("LIVE: Google Sheets Multi-Row Metric Update", () => {
   let dbHarness: TestDbHarness;
@@ -94,9 +102,7 @@ describeIf("LIVE: Google Sheets Multi-Row Metric Update", () => {
       });
 
       // Read sheet to verify test companies exist
-      const preCheckResult = await client.readRange(
-        `${COMPANY_SHEET_NAME}!A:J`,
-      );
+      const preCheckResult = await client.readRange(COMPANY_SHEET_FULL_READ_RANGE);
       if (!preCheckResult.ok) {
         throw new Error(
           `Failed to read sheet for precondition check: ${preCheckResult.error?.message}`,
@@ -108,7 +114,7 @@ describeIf("LIVE: Google Sheets Multi-Row Metric Update", () => {
 
       // Find test company rows
       const existingTestCompanies = preCheckDataRows.filter((row) => {
-        const companyId = row[0] as string;
+        const companyId = row[COMPANY_SHEET_COL_INDEX.company_id] as string;
         return TEST_COMPANY_IDS.includes(parseInt(companyId, 10));
       });
 
@@ -133,11 +139,14 @@ describeIf("LIVE: Google Sheets Multi-Row Metric Update", () => {
       const manualColumnsBefore = new Map<number, ManualColumns>();
 
       for (const row of existingTestCompanies) {
-        const companyId = parseInt(row[0] as string, 10);
+        const companyId = parseInt(
+          row[COMPANY_SHEET_COL_INDEX.company_id] as string,
+          10,
+        );
         manualColumnsBefore.set(companyId, {
-          companyId: row[0] as string,
-          companyName: row[1] as string,
-          resolution: row[2] as string,
+          companyId: row[COMPANY_SHEET_COL_INDEX.company_id] as string,
+          companyName: row[COMPANY_SHEET_COL_INDEX.company_name] as string,
+          resolution: row[COMPANY_SHEET_COL_INDEX.resolution] as string,
         });
       }
 
@@ -159,6 +168,7 @@ describeIf("LIVE: Google Sheets Multi-Row Metric Update", () => {
           strong_offer_count: 4,
           avg_strong_score: 8.0,
           top_category: "cat_backend",
+          top_offer_url: "https://live-test.example/offers/900001-top",
           last_strong_at: "2026-02-07T09:00:00Z",
         },
         {
@@ -174,6 +184,7 @@ describeIf("LIVE: Google Sheets Multi-Row Metric Update", () => {
           strong_offer_count: 2,
           avg_strong_score: 7.0,
           top_category: "cat_frontend",
+          top_offer_url: "https://live-test.example/offers/900002-top",
           last_strong_at: "2026-02-07T08:00:00Z",
         },
         {
@@ -189,6 +200,7 @@ describeIf("LIVE: Google Sheets Multi-Row Metric Update", () => {
           strong_offer_count: 6,
           avg_strong_score: 8.8,
           top_category: "cat_devops",
+          top_offer_url: "https://live-test.example/offers/900003-top",
           last_strong_at: "2026-02-07T10:00:00Z",
         },
         {
@@ -204,6 +216,7 @@ describeIf("LIVE: Google Sheets Multi-Row Metric Update", () => {
           strong_offer_count: 1,
           avg_strong_score: 6.5,
           top_category: "cat_backend",
+          top_offer_url: "https://live-test.example/offers/900004-top",
           last_strong_at: "2026-02-07T07:00:00Z",
         },
         {
@@ -219,6 +232,7 @@ describeIf("LIVE: Google Sheets Multi-Row Metric Update", () => {
           strong_offer_count: 3,
           avg_strong_score: 7.5,
           top_category: "cat_data",
+          top_offer_url: "https://live-test.example/offers/900005-top",
           last_strong_at: "2026-02-07T11:00:00Z",
         },
       ];
@@ -252,6 +266,30 @@ describeIf("LIVE: Google Sheets Multi-Row Metric Update", () => {
           company.top_category,
           company.last_strong_at,
         );
+      }
+
+      // Seed deterministic top offers so column H (top_offer_url) is always URL-shaped
+      const updateTopOfferId = dbHarness.db.prepare(`
+        UPDATE companies
+        SET top_offer_id = ?,
+            updated_at = ?
+        WHERE id = ?
+      `);
+
+      for (const company of initialCompanyData) {
+        const topOfferId = upsertOffer({
+          provider: "live-test",
+          provider_offer_id: `live-top-offer-${company.id}`,
+          provider_url: company.top_offer_url,
+          company_id: company.id,
+          title: `${company.display} Top Offer`,
+          description: "LIVE top offer fixture",
+          published_at: "2026-02-07T10:00:00Z",
+          updated_at: "2026-02-07T10:00:00Z",
+          created_at: "2026-02-07T10:00:00Z",
+        });
+
+        updateTopOfferId.run(topOfferId, "2026-02-07T10:00:00Z", company.id);
       }
 
       // ========================================================================
@@ -374,7 +412,7 @@ describeIf("LIVE: Google Sheets Multi-Row Metric Update", () => {
       // ACT: Read back from Google Sheets
       // ========================================================================
 
-      const readResult = await client.readRange(`${COMPANY_SHEET_NAME}!A:J`);
+      const readResult = await client.readRange(COMPANY_SHEET_FULL_READ_RANGE);
 
       if (!readResult.ok) {
         throw new Error(
@@ -386,7 +424,10 @@ describeIf("LIVE: Google Sheets Multi-Row Metric Update", () => {
       const dataRows = sheetValues.slice(1); // Skip header
 
       const testCompanyRows = dataRows.filter((row) => {
-        const companyId = parseInt(row[0] as string, 10);
+        const companyId = parseInt(
+          row[COMPANY_SHEET_COL_INDEX.company_id] as string,
+          10,
+        );
         return TEST_COMPANY_IDS.includes(companyId);
       });
 
@@ -397,19 +438,28 @@ describeIf("LIVE: Google Sheets Multi-Row Metric Update", () => {
       // ========================================================================
 
       for (const row of testCompanyRows) {
-        const companyId = parseInt(row[0] as string, 10);
+        const companyId = parseInt(
+          row[COMPANY_SHEET_COL_INDEX.company_id] as string,
+          10,
+        );
         const beforeValues = manualColumnsBefore.get(companyId);
 
         expect(beforeValues).toBeDefined();
 
         // Column A: company_id (unchanged)
-        expect(row[0]).toBe(beforeValues!.companyId);
+        expect(row[COMPANY_SHEET_COL_INDEX.company_id]).toBe(
+          beforeValues!.companyId,
+        );
 
         // Column B: company_name (unchanged)
-        expect(row[1]).toBe(beforeValues!.companyName);
+        expect(row[COMPANY_SHEET_COL_INDEX.company_name]).toBe(
+          beforeValues!.companyName,
+        );
 
         // Column C: resolution (unchanged)
-        expect(row[2]).toBe(beforeValues!.resolution);
+        expect(row[COMPANY_SHEET_COL_INDEX.resolution]).toBe(
+          beforeValues!.resolution,
+        );
       }
 
       // ========================================================================
@@ -418,7 +468,9 @@ describeIf("LIVE: Google Sheets Multi-Row Metric Update", () => {
 
       for (const companyId of MUTATED_COMPANY_IDS) {
         const row = testCompanyRows.find(
-          (r) => parseInt(r[0] as string, 10) === companyId,
+          (r) =>
+            parseInt(r[COMPANY_SHEET_COL_INDEX.company_id] as string, 10) ===
+            companyId,
         );
         expect(row).toBeDefined();
 
@@ -426,27 +478,39 @@ describeIf("LIVE: Google Sheets Multi-Row Metric Update", () => {
           mutatedMetrics[companyId as keyof typeof mutatedMetrics];
 
         // Column D: max_score (compare as numbers, Google Sheets may format with trailing zeros)
-        expect(parseFloat(row![3] as string)).toBe(metrics.max_score);
+        expect(parseFloat(row![COMPANY_SHEET_COL_INDEX.max_score] as string)).toBe(
+          metrics.max_score,
+        );
 
         // Column E: strong_offers (strong_offer_count)
-        expect(row![4]).toBe(metrics.strong_offer_count.toString());
+        expect(row![COMPANY_SHEET_COL_INDEX.strong_offers]).toBe(
+          metrics.strong_offer_count.toString(),
+        );
 
         // Column F: unique_offers
-        expect(row![5]).toBe(metrics.unique_offer_count.toString());
+        expect(row![COMPANY_SHEET_COL_INDEX.unique_offers]).toBe(
+          metrics.unique_offer_count.toString(),
+        );
 
         // Column G: posting_activity (offer_count)
-        expect(row![6]).toBe(metrics.offer_count.toString());
+        expect(row![COMPANY_SHEET_COL_INDEX.posting_activity]).toBe(
+          metrics.offer_count.toString(),
+        );
 
-        // Column H: avg_strong_score (compare as numbers)
-        expect(parseFloat(row![7] as string)).toBe(metrics.avg_strong_score);
+        // Column H: top_offer_url
+        expect(row![COMPANY_SHEET_COL_INDEX.top_offer_url]).toMatch(
+          /^https?:\/\//,
+        );
 
         // Column I: top_category (resolved label)
         const expectedCategory = catalog.categories.get(metrics.top_category);
-        expect(row![8]).toBe(expectedCategory?.name || "");
+        expect(row![COMPANY_SHEET_COL_INDEX.top_category]).toBe(
+          expectedCategory?.name || "",
+        );
 
         // Column J: last_strong_at (formatted as YYYY-MM-DD)
         const expectedDate = metrics.last_strong_at.split("T")[0];
-        expect(row![9]).toBe(expectedDate);
+        expect(row![COMPANY_SHEET_COL_INDEX.last_strong_at]).toBe(expectedDate);
       }
 
       // ========================================================================
@@ -455,7 +519,9 @@ describeIf("LIVE: Google Sheets Multi-Row Metric Update", () => {
 
       for (const companyId of UNCHANGED_COMPANY_IDS) {
         const row = testCompanyRows.find(
-          (r) => parseInt(r[0] as string, 10) === companyId,
+          (r) =>
+            parseInt(r[COMPANY_SHEET_COL_INDEX.company_id] as string, 10) ===
+            companyId,
         );
         expect(row).toBeDefined();
 
@@ -464,31 +530,41 @@ describeIf("LIVE: Google Sheets Multi-Row Metric Update", () => {
         expect(originalData).toBeDefined();
 
         // Column D: max_score (compare as numbers)
-        expect(parseFloat(row![3] as string)).toBe(originalData!.max_score);
+        expect(parseFloat(row![COMPANY_SHEET_COL_INDEX.max_score] as string)).toBe(
+          originalData!.max_score,
+        );
 
         // Column E: strong_offers
-        expect(row![4]).toBe(originalData!.strong_offer_count.toString());
+        expect(row![COMPANY_SHEET_COL_INDEX.strong_offers]).toBe(
+          originalData!.strong_offer_count.toString(),
+        );
 
         // Column F: unique_offers
-        expect(row![5]).toBe(originalData!.unique_offer_count.toString());
+        expect(row![COMPANY_SHEET_COL_INDEX.unique_offers]).toBe(
+          originalData!.unique_offer_count.toString(),
+        );
 
         // Column G: posting_activity
-        expect(row![6]).toBe(originalData!.offer_count.toString());
+        expect(row![COMPANY_SHEET_COL_INDEX.posting_activity]).toBe(
+          originalData!.offer_count.toString(),
+        );
 
-        // Column H: avg_strong_score (compare as numbers)
-        expect(parseFloat(row![7] as string)).toBe(
-          originalData!.avg_strong_score,
+        // Column H: top_offer_url
+        expect(row![COMPANY_SHEET_COL_INDEX.top_offer_url]).toMatch(
+          /^https?:\/\//,
         );
 
         // Column I: top_category
         const expectedCategory = catalog.categories.get(
           originalData!.top_category,
         );
-        expect(row![8]).toBe(expectedCategory?.name || "");
+        expect(row![COMPANY_SHEET_COL_INDEX.top_category]).toBe(
+          expectedCategory?.name || "",
+        );
 
         // Column J: last_strong_at
         const expectedDate = originalData!.last_strong_at.split("T")[0];
-        expect(row![9]).toBe(expectedDate);
+        expect(row![COMPANY_SHEET_COL_INDEX.last_strong_at]).toBe(expectedDate);
       }
 
       // ========================================================================

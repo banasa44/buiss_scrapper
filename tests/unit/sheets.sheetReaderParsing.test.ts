@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { parseCompanyId, parseResolution } from "@/utils";
+import { parseCompanyId, parseResolution, parseModelFeedback } from "@/utils";
 
 describe("parseCompanyId", () => {
   describe("valid inputs", () => {
@@ -111,6 +111,50 @@ describe("parseResolution", () => {
       expect(parseResolution(123)).toBeNull();
       expect(parseResolution(true)).toBeNull();
       expect(parseResolution({})).toBeNull();
+    });
+  });
+});
+
+describe("parseModelFeedback", () => {
+  describe("valid inputs", () => {
+    it("should parse valid feedback values (exact case)", () => {
+      expect(parseModelFeedback("OK")).toBe("OK");
+      expect(parseModelFeedback("FP")).toBe("FP");
+      expect(parseModelFeedback("FN")).toBe("FN");
+    });
+
+    it("should parse valid feedback values (case-insensitive)", () => {
+      expect(parseModelFeedback("ok")).toBe("OK");
+      expect(parseModelFeedback("fp")).toBe("FP");
+      expect(parseModelFeedback("Fn")).toBe("FN");
+    });
+
+    it("should parse values with leading/trailing whitespace", () => {
+      expect(parseModelFeedback(" ok ")).toBe("OK");
+      expect(parseModelFeedback("\tFP\n")).toBe("FP");
+    });
+  });
+
+  describe("invalid inputs", () => {
+    it("should return null for empty string", () => {
+      expect(parseModelFeedback("")).toBeNull();
+      expect(parseModelFeedback("   ")).toBeNull();
+    });
+
+    it("should return null for invalid values", () => {
+      expect(parseModelFeedback("TP")).toBeNull();
+      expect(parseModelFeedback("INVALID")).toBeNull();
+      expect(parseModelFeedback("YES")).toBeNull();
+      expect(parseModelFeedback("UNKNOWN")).toBeNull();
+      expect(parseModelFeedback("unknown")).toBeNull();
+    });
+
+    it("should return null for non-string types", () => {
+      expect(parseModelFeedback(null)).toBeNull();
+      expect(parseModelFeedback(undefined)).toBeNull();
+      expect(parseModelFeedback(123)).toBeNull();
+      expect(parseModelFeedback(true)).toBeNull();
+      expect(parseModelFeedback({})).toBeNull();
     });
   });
 });

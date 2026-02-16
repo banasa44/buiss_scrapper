@@ -14,6 +14,31 @@ import type {
 import { getDb } from "@/db";
 import { warn } from "@/logger";
 
+function requireProviderUrl(input: OfferInput): string {
+  if (typeof input.provider_url !== "string") {
+    throw new Error(
+      `Cannot upsert offer: provider_url is required (${input.provider}:${input.provider_offer_id})`,
+    );
+  }
+
+  const providerUrl = input.provider_url.trim();
+
+  if (providerUrl.length === 0) {
+    throw new Error(
+      `Cannot upsert offer: provider_url is required (${input.provider}:${input.provider_offer_id})`,
+    );
+  }
+
+  try {
+    new URL(providerUrl);
+    return providerUrl;
+  } catch {
+    throw new Error(
+      `Cannot upsert offer: provider_url must be a valid URL (${input.provider}:${input.provider_offer_id})`,
+    );
+  }
+}
+
 /**
  * Upsert an offer based on UNIQUE(provider, provider_offer_id)
  *
@@ -21,6 +46,7 @@ import { warn } from "@/logger";
  */
 export function upsertOffer(input: OfferInput): number {
   const db = getDb();
+  const providerUrl = requireProviderUrl(input);
 
   // Single upsert using ON CONFLICT
   // Note: Canonicalization fields (canonical_offer_id, content_fingerprint,
@@ -54,7 +80,7 @@ export function upsertOffer(input: OfferInput): number {
   ).run(
     input.provider,
     input.provider_offer_id,
-    input.provider_url ?? null,
+    providerUrl,
     input.company_id,
     input.title,
     input.description ?? null,

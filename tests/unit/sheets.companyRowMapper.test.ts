@@ -51,7 +51,7 @@ function createTestCatalog(categories: CategoryRuntime[] = []): CatalogRuntime {
 
 describe("mapCompanyToSheetRow", () => {
   describe("column order and structure", () => {
-    it("should return 11 columns in correct order", () => {
+    it("should return 10 columns in correct order", () => {
       const company = createTestCompany({
         id: 42,
         name_display: "Acme Corp",
@@ -74,7 +74,7 @@ describe("mapCompanyToSheetRow", () => {
         "https://example.com/job/123",
       );
 
-      expect(row).toHaveLength(11);
+      expect(row).toHaveLength(10);
       expect(row[0]).toBe(42); // company_id
       expect(row[1]).toBe("Acme Corp"); // company_name
       expect(row[2]).toBe("PENDING"); // resolution
@@ -82,10 +82,9 @@ describe("mapCompanyToSheetRow", () => {
       expect(row[4]).toBe(12); // strong_offers
       expect(row[5]).toBe(15); // unique_offers
       expect(row[6]).toBe(20); // posting_activity
-      expect(row[7]).toBe("7.3"); // avg_strong_score
+      expect(row[7]).toBe("https://example.com/job/123"); // top_offer_url
       expect(row[8]).toBe("Cloud Infrastructure"); // top_category
       expect(row[9]).toBe("2026-02-01"); // last_strong_at
-      expect(row[10]).toBe("https://example.com/job/123"); // top_offer_url
     });
 
     it("should set top_offer_url to empty string when not provided", () => {
@@ -94,8 +93,8 @@ describe("mapCompanyToSheetRow", () => {
 
       const row = mapCompanyToSheetRow(company, catalog);
 
-      expect(row).toHaveLength(11);
-      expect(row[10]).toBe(""); // top_offer_url defaults to empty
+      expect(row).toHaveLength(10);
+      expect(row[7]).toBe(""); // top_offer_url defaults to empty
     });
 
     it("should set top_offer_url to empty string when null", () => {
@@ -104,7 +103,7 @@ describe("mapCompanyToSheetRow", () => {
 
       const row = mapCompanyToSheetRow(company, catalog, null);
 
-      expect(row[10]).toBe(""); // top_offer_url null becomes empty
+      expect(row[7]).toBe(""); // top_offer_url null becomes empty
     });
   });
 
@@ -129,13 +128,13 @@ describe("mapCompanyToSheetRow", () => {
       expect(row[3]).toBe("7.0");
     });
 
-    it("should format avg_strong_score with 1 decimal place", () => {
-      const company = createTestCompany({ avg_strong_score: 6.789 });
+    it("should format max_score decimal correctly", () => {
+      const company = createTestCompany({ max_score: 8.523 });
       const catalog = createTestCatalog();
 
       const row = mapCompanyToSheetRow(company, catalog);
 
-      expect(row[7]).toBe("6.8");
+      expect(row[3]).toBe("8.5");
     });
 
     it("should return empty string for null max_score", () => {
@@ -145,15 +144,6 @@ describe("mapCompanyToSheetRow", () => {
       const row = mapCompanyToSheetRow(company, catalog);
 
       expect(row[3]).toBe("");
-    });
-
-    it("should return empty string for null avg_strong_score", () => {
-      const company = createTestCompany({ avg_strong_score: null });
-      const catalog = createTestCatalog();
-
-      const row = mapCompanyToSheetRow(company, catalog);
-
-      expect(row[7]).toBe("");
     });
   });
 
@@ -224,7 +214,7 @@ describe("mapCompanyToSheetRow", () => {
       expect(row[8]).toBe("Artificial Intelligence");
     });
 
-    it("should fallback to raw category ID if catalog lookup fails", () => {
+    it("should return empty string if catalog lookup fails", () => {
       const company = createTestCompany({ top_category_id: "cat_unknown" });
       const catalog = createTestCatalog([
         { id: "cat_ai", name: "AI", tier: 3 },
@@ -232,7 +222,7 @@ describe("mapCompanyToSheetRow", () => {
 
       const row = mapCompanyToSheetRow(company, catalog);
 
-      expect(row[8]).toBe("cat_unknown");
+      expect(row[8]).toBe("");
     });
 
     it("should return empty string for null category ID", () => {

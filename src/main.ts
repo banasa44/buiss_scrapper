@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "@/bootstrap/env";
 import { InfoJobsClient } from "@/clients/infojobs";
 import * as logger from "@/logger";
 

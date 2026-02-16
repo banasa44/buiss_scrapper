@@ -27,11 +27,20 @@ import { GoogleSheetsClient } from "@/clients/googleSheets";
 import { syncCompaniesToSheet } from "@/sheets/syncCompaniesToSheet";
 import { createTestDbSync, type TestDbHarness } from "../../helpers/testDb";
 import type { CatalogRuntime } from "@/types/catalog";
-import { COMPANY_SHEET_NAME, COMPANY_SHEET_HEADERS } from "@/constants";
+import {
+  COMPANY_SHEET_NAME,
+  COMPANY_SHEET_HEADERS,
+  COMPANY_SHEET_COLUMNS,
+  COMPANY_SHEET_COL_INDEX,
+} from "@/constants";
+import { colIndexToLetter } from "@/utils";
 
 // Skip test if not explicitly enabled
 const isLiveTestEnabled = process.env.LIVE_SHEETS_TEST === "1";
 const describeIf = isLiveTestEnabled ? describe : describe.skip;
+const LAST_COMPANY_COL_LETTER = colIndexToLetter(COMPANY_SHEET_COLUMNS.length - 1);
+const COMPANY_SHEET_FULL_READ_RANGE = `${COMPANY_SHEET_NAME}!A:${LAST_COMPANY_COL_LETTER}`;
+const COMPANY_SHEET_HEADER_READ_RANGE = `${COMPANY_SHEET_NAME}!A1:${LAST_COMPANY_COL_LETTER}1`;
 
 describeIf("LIVE: Google Sheets Multi-Row Append", () => {
   let dbHarness: TestDbHarness;
@@ -272,7 +281,14 @@ describeIf("LIVE: Google Sheets Multi-Row Append", () => {
       // ACT: Read back from Google Sheets
       // ========================================================================
 
-      const readResult = await client.readRange(`${COMPANY_SHEET_NAME}!A:J`);
+      const headerReadResult = await client.readRange(COMPANY_SHEET_HEADER_READ_RANGE);
+      if (!headerReadResult.ok) {
+        throw new Error(
+          `Failed to read header row from Google Sheets: ${headerReadResult.error?.message}`,
+        );
+      }
+
+      const readResult = await client.readRange(COMPANY_SHEET_FULL_READ_RANGE);
 
       if (!readResult.ok) {
         throw new Error(
@@ -291,14 +307,15 @@ describeIf("LIVE: Google Sheets Multi-Row Append", () => {
       expect(sheetValues.length).toBeGreaterThanOrEqual(EXPECTED_COUNT + 1);
 
       // 2. Header row matches expected structure
-      const headerRow = sheetValues[0];
+      const headerRow = headerReadResult.data.values?.[0] || [];
+      expect(headerRow.length).toBe(COMPANY_SHEET_HEADERS.length);
       expect(headerRow).toEqual(COMPANY_SHEET_HEADERS);
 
       // 3. Find our test company rows
       const testCompanyRows = sheetValues
         .slice(1) // Skip header
         .filter((row) => {
-          const companyId = row[0]; // Column A is ID
+          const companyId = row[COMPANY_SHEET_COL_INDEX.company_id];
           return (
             typeof companyId === "string" &&
             TEST_COMPANY_IDS.includes(parseInt(companyId, 10))
@@ -308,38 +325,40 @@ describeIf("LIVE: Google Sheets Multi-Row Append", () => {
       // 4. All 5 test companies exist in sheet
       expect(testCompanyRows.length).toBe(EXPECTED_COUNT);
 
-      // 5. Each row has correct structure (10 columns)
+      // 5. Each row has correct structure
       for (const row of testCompanyRows) {
-        expect(row.length).toBe(10); // A through J
+        expect(row.length).toBeGreaterThanOrEqual(
+          COMPANY_SHEET_COL_INDEX.last_strong_at + 1,
+        );
 
         // Column A: company_id (numeric string)
-        const companyId = row[0] as string;
+        const companyId = row[COMPANY_SHEET_COL_INDEX.company_id] as string;
         expect(typeof companyId).toBe("string");
         expect(parseInt(companyId, 10)).toBeGreaterThan(0);
 
         // Column B: company_name (non-empty string)
-        const companyName = row[1] as string;
+        const companyName = row[COMPANY_SHEET_COL_INDEX.company_name] as string;
         expect(typeof companyName).toBe("string");
         expect(companyName.length).toBeGreaterThan(0);
 
         // Column C: resolution (should be "PENDING" for our test data)
-        expect(row[2]).toBe("PENDING");
+        expect(row[COMPANY_SHEET_COL_INDEX.resolution]).toBe("PENDING");
 
         // Column D: max_score (numeric string or number)
-        expect(row[3]).toBeDefined();
+        expect(row[COMPANY_SHEET_COL_INDEX.max_score]).toBeDefined();
 
         // Columns E-J: other metrics (defined but may be null/empty)
-        expect(row[4]).toBeDefined(); // strong_offers
-        expect(row[5]).toBeDefined(); // unique_offers
-        expect(row[6]).toBeDefined(); // posting_activity
-        expect(row[7]).toBeDefined(); // avg_strong_score
-        expect(row[8]).toBeDefined(); // top_category
-        expect(row[9]).toBeDefined(); // last_strong_at
+        expect(row[COMPANY_SHEET_COL_INDEX.strong_offers]).toBeDefined();
+        expect(row[COMPANY_SHEET_COL_INDEX.unique_offers]).toBeDefined();
+        expect(row[COMPANY_SHEET_COL_INDEX.posting_activity]).toBeDefined();
+        expect(row[COMPANY_SHEET_COL_INDEX.top_offer_url]).toBeDefined();
+        expect(row[COMPANY_SHEET_COL_INDEX.top_category]).toBeDefined();
+        expect(row[COMPANY_SHEET_COL_INDEX.last_strong_at]).toBeDefined();
       }
 
       // 6. Verify specific company IDs are present
       const foundCompanyIds = testCompanyRows.map((row) =>
-        parseInt(row[0] as string, 10),
+        parseInt(row[COMPANY_SHEET_COL_INDEX.company_id] as string, 10),
       );
       for (const expectedId of TEST_COMPANY_IDS) {
         expect(foundCompanyIds).toContain(expectedId);

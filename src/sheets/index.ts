@@ -16,3 +16,4 @@ export * from "./processSheetsFeedback";
 export * from "./feedbackPersistence";
 export * from "./feedbackReader";
 export * from "./headerEnforcer";
+export * from "./applyCompanySheetHeader";

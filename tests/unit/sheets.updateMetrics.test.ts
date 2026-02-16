@@ -62,7 +62,7 @@ describe("extractMetricSlice", () => {
       10, // strong_offers
       15, // unique_offers
       20, // posting_activity
-      "7.2", // avg_strong_score
+      "https://example.com/job/123", // top_offer_url
       "Cloud", // top_category
       "2026-02-01", // last_strong_at (metric end)
     ];
@@ -75,7 +75,7 @@ describe("extractMetricSlice", () => {
       10, // strong_offers
       15, // unique_offers
       20, // posting_activity
-      "7.2", // avg_strong_score
+      "https://example.com/job/123", // top_offer_url
       "Cloud", // top_category
       "2026-02-01", // last_strong_at
     ]);
@@ -90,7 +90,7 @@ describe("extractMetricSlice", () => {
       5, // strong_offers
       8, // unique_offers
       12, // posting_activity
-      "8.5", // avg_strong_score
+      "https://example.com/job/456", // top_offer_url
       "AI", // top_category
       "2026-01-15", // last_strong_at
     ];
@@ -115,7 +115,7 @@ describe("extractMetricSlice", () => {
       "", // strong_offers (empty)
       "", // unique_offers (empty)
       "", // posting_activity (empty)
-      "", // avg_strong_score (empty)
+      "", // top_offer_url (empty)
       "", // top_category (empty)
       "", // last_strong_at (empty)
     ];

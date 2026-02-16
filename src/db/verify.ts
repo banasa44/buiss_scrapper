@@ -4,6 +4,7 @@
  * Tests basic CRUD operations through repositories
  */
 
+import "@/bootstrap/env";
 import {
   openDb,
   closeDb,
@@ -118,6 +119,7 @@ function testDb() {
   const offerId2 = upsertOffer({
     provider: "infojobs",
     provider_offer_id: "offer-456",
+    provider_url: "https://example.com/offer-456",
     company_id: companyId1,
     title: "Software Engineer (Updated)",
     applications_count: 10,
@@ -221,6 +223,7 @@ function testDb() {
   const canonicalOfferId = upsertOffer({
     provider: "infojobs",
     provider_offer_id: "canonical-offer-1",
+    provider_url: "https://example.com/canonical-offer-1",
     company_id: companyId1,
     title: "Senior Backend Engineer",
     description: "Work on cloud infrastructure",
@@ -236,6 +239,7 @@ function testDb() {
   const duplicateOfferId = upsertOffer({
     provider: "infojobs",
     provider_offer_id: "duplicate-offer-1",
+    provider_url: "https://example.com/duplicate-offer-1",
     company_id: companyId1,
     title: "Senior Backend Engineer (repost)",
     description: "Work on cloud infrastructure (same job)",

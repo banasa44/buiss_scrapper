@@ -65,6 +65,7 @@ const companyId = upsertCompany({
 const offerId = upsertOffer({
   provider: "infojobs",
   provider_offer_id: "456",
+  provider_url: "https://example.com/offers/456",
   company_id: companyId,
   title: "Job Title",
   description: "Full description...",

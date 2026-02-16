@@ -2,15 +2,15 @@
  * Integration Test — M5 Export: Append New Companies to Empty Sheet
  *
  * P0 invariant: When exporting companies to an empty sheet, the system MUST:
- * 1. Write Spanish header row via enforcer (if missing)
+ * 1. Validate Spanish header row contract before export
  * 2. Append N company rows in correct 10-column order
  * 3. Leave DB unchanged (export is read-only on DB side)
  *
  * This test validates the complete M5 export path end-to-end:
- * - Mock Google Sheets with empty initial state
+ * - Mock Google Sheets with header-only initial state (no data rows)
  * - Seed DB with 2 companies
  * - Execute syncCompaniesToSheet (includes header enforcement)
- * - Assert header written + companies appended in correct order
+ * - Assert companies appended in correct order
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -25,7 +25,6 @@ describe("Integration: M5 Export Append to Empty Sheet", () => {
   const mockFetch = vi.fn();
 
   // Track what was written to sheets
-  let headerWritten: string[] | null = null;
   let rowsAppended: unknown[][] = [];
 
   // Valid PKCS8 private key for testing
@@ -63,7 +62,6 @@ X6LloxV8OuZpUXhq0/ihp0JY
     dbHarness = createTestDbSync();
 
     // Reset tracking
-    headerWritten = null;
     rowsAppended = [];
 
     // Stub global fetch for GoogleSheetsClient
@@ -113,6 +111,33 @@ X6LloxV8OuZpUXhq0/ihp0JY
         "cat_backend", // top_category_id
         "2026-02-06T08:00:00Z", // last_strong_at
       ).lastInsertRowid as number;
+
+    // Deterministic top offer URL fixture for column H (URL Oferta Top)
+    const company1TopOfferId = dbHarness.db
+      .prepare(
+        `
+      INSERT INTO offers (
+        provider, provider_offer_id, provider_url, company_id, title
+      ) VALUES (?, ?, ?, ?, ?)
+    `,
+      )
+      .run(
+        "infojobs",
+        "alpha-top-offer-1",
+        "https://alphatech.example/jobs/top-1",
+        company1Id,
+        "Senior Backend Engineer",
+      ).lastInsertRowid as number;
+
+    dbHarness.db
+      .prepare(
+        `
+      UPDATE companies
+      SET top_offer_id = ?
+      WHERE id = ?
+    `,
+      )
+      .run(company1TopOfferId, company1Id);
 
     // Company 2: With minimal metrics (mostly null)
     const company2Id = dbHarness.db
@@ -194,29 +219,20 @@ X6LloxV8OuZpUXhq0/ihp0JY
           json: async () => ({
             range: "Companies!A1:L1",
             majorDimension: "ROWS",
-            values: [], // Empty - no header exists yet
+            values: [COMPANY_SHEET_HEADERS],
           }),
         };
       }
 
-      // Header write (enforcer writes Spanish headers) - now 12 columns (A-L)
+      // Guard: validation-only enforcer must never write headers
       if (
         (urlString.includes("Companies!A1:L1") ||
           urlString.includes("Companies!A1%3AL1")) &&
         method === "PUT"
       ) {
-        const body = JSON.parse(options?.body as string);
-        headerWritten = body.values[0]; // Track what header was written
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({
-            updatedRange: "Companies!A1:L1",
-            updatedRows: 1,
-            updatedColumns: 12,
-            updatedCells: 12,
-          }),
-        };
+        throw new Error(
+          `TEST FAILURE: Header enforcer attempted to write header. URL: ${urlString}`,
+        );
       }
 
       // Spreadsheet batchUpdate endpoint (data validation)
@@ -315,14 +331,10 @@ X6LloxV8OuZpUXhq0/ihp0JY
     expect(result.updatedCount).toBe(0); // No updates, only appends
     expect(result.skippedCount).toBe(0);
 
-    // 2. Spanish header was written
-    expect(headerWritten).not.toBeNull();
-    expect(headerWritten).toEqual(COMPANY_SHEET_HEADERS);
-
-    // 3. Exactly 2 rows appended
+    // 2. Exactly 2 rows appended
     expect(rowsAppended.length).toBe(2);
 
-    // 4. First row has correct 10-column order for Company 1
+    // 3. First row has correct 10-column order for Company 1
     const row1 = rowsAppended[0] as (string | number)[];
     expect(row1.length).toBe(10);
     expect(row1[0]).toBe(company1Id); // company_id
@@ -332,11 +344,11 @@ X6LloxV8OuZpUXhq0/ihp0JY
     expect(row1[4]).toBe(3); // strong_offers
     expect(row1[5]).toBe(5); // unique_offers
     expect(row1[6]).toBe(10); // posting_activity
-    expect(row1[7]).toBe("7.9"); // avg_strong_score (formatted)
+    expect(row1[7]).toBe("https://alphatech.example/jobs/top-1"); // top_offer_url
     expect(row1[8]).toBe("Backend"); // top_category (resolved label)
     expect(row1[9]).toBe("2026-02-06"); // last_strong_at (date only)
 
-    // 5. Second row has correct 10-column order for Company 2 (nulls → empty)
+    // 4. Second row has correct 10-column order for Company 2 (nulls → empty)
     const row2 = rowsAppended[1] as (string | number)[];
     expect(row2.length).toBe(10);
     expect(row2[0]).toBe(company2Id); // company_id
@@ -346,11 +358,11 @@ X6LloxV8OuZpUXhq0/ihp0JY
     expect(row2[4]).toBe(""); // strong_offers (null → empty)
     expect(row2[5]).toBe(""); // unique_offers (null → empty)
     expect(row2[6]).toBe(""); // posting_activity (null → empty)
-    expect(row2[7]).toBe(""); // avg_strong_score (null → empty)
+    expect(row2[7]).toBe(""); // top_offer_url (null → empty)
     expect(row2[8]).toBe(""); // top_category (null → empty)
     expect(row2[9]).toBe(""); // last_strong_at (null → empty)
 
-    // 6. DB unchanged (verify companies still exist with same data)
+    // 5. DB unchanged (verify companies still exist with same data)
     const companiesAfter = dbHarness.db
       .prepare("SELECT COUNT(*) as count FROM companies")
       .get() as { count: number };

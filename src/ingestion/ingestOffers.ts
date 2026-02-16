@@ -112,14 +112,18 @@ export function ingestOffers(input: IngestOffersInput): IngestOffersResult {
           });
         }
       }
-    } else if (result.reason === "company_unidentifiable") {
+    } else if (
+      result.reason === "company_unidentifiable" ||
+      result.reason === "missing_provider_url"
+    ) {
       skipped++;
       if (acc) {
         acc.counters.offers_skipped = (acc.counters.offers_skipped ?? 0) + 1;
       }
-      logger.debug("Offer skipped: company unidentifiable", {
+      logger.debug("Offer skipped before persistence", {
         provider,
         offerId: offer.ref.id,
+        reason: result.reason,
       });
     } else if (result.reason === "missing_description") {
       // ATS-only: offer missing required description field

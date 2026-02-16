@@ -176,6 +176,7 @@ describe("Offer Ingestion — Idempotency & Bad Records", () => {
         ref: {
           provider: "infojobs",
           id: "offer-null-overwrite",
+          url: "https://example.com/offer-null-overwrite",
         },
         title: "Test Offer",
         company: {
@@ -200,6 +201,7 @@ describe("Offer Ingestion — Idempotency & Bad Records", () => {
         ref: {
           provider: "infojobs",
           id: "offer-null-overwrite",
+          url: "https://example.com/offer-null-overwrite",
         },
         title: "Test Offer",
         company: {
@@ -231,6 +233,7 @@ describe("Offer Ingestion — Idempotency & Bad Records", () => {
           ref: {
             provider: "infojobs",
             id: "offer-valid-1",
+            url: "https://example.com/offer-valid-1",
           },
           title: "Valid Offer",
           company: {
@@ -243,6 +246,7 @@ describe("Offer Ingestion — Idempotency & Bad Records", () => {
           ref: {
             provider: "infojobs",
             id: "offer-invalid-no-identity",
+            url: "https://example.com/offer-invalid-no-identity",
           },
           title: "Invalid Offer",
           company: {
@@ -287,17 +291,29 @@ describe("Offer Ingestion — Idempotency & Bad Records", () => {
       // Arrange: Batch with 3 offers - 2 valid, 1 invalid
       const offers: JobOfferSummary[] = [
         {
-          ref: { provider: "infojobs", id: "batch-valid-1" },
+          ref: {
+            provider: "infojobs",
+            id: "batch-valid-1",
+            url: "https://example.com/batch-valid-1",
+          },
           title: "First Valid",
           company: { name: "Company A", normalizedName: "company a" },
         },
         {
-          ref: { provider: "infojobs", id: "batch-invalid" },
+          ref: {
+            provider: "infojobs",
+            id: "batch-invalid",
+            url: "https://example.com/batch-invalid",
+          },
           title: "Invalid",
           company: {}, // No identity evidence
         },
         {
-          ref: { provider: "infojobs", id: "batch-valid-2" },
+          ref: {
+            provider: "infojobs",
+            id: "batch-valid-2",
+            url: "https://example.com/batch-valid-2",
+          },
           title: "Second Valid",
           company: { name: "Company B", normalizedName: "company b" },
         },
@@ -324,6 +340,81 @@ describe("Offer Ingestion — Idempotency & Bad Records", () => {
       expect(result.counters.offers_fetched).toBe(3);
       expect(result.counters.offers_upserted).toBe(2);
       expect(result.counters.offers_skipped).toBe(1);
+    });
+
+    it("should never persist offers with missing provider_url", async () => {
+      harness = createTestDbSync();
+
+      const offers: JobOfferSummary[] = [
+        {
+          ref: {
+            provider: "infojobs",
+            id: "url-valid-1",
+            url: "https://example.com/url-valid-1",
+          },
+          title: "Valid URL Offer",
+          company: {
+            name: "Valid URL Company",
+            normalizedName: "valid url company",
+          },
+        },
+        {
+          ref: {
+            provider: "infojobs",
+            id: "url-missing-1",
+          },
+          title: "Missing URL Offer",
+          company: {
+            name: "Valid Company Missing URL",
+            normalizedName: "valid company missing url",
+          },
+        },
+      ];
+
+      const result = await runOfferBatchIngestion("infojobs", offers);
+
+      expect(result.result.processed).toBe(2);
+      expect(result.result.upserted).toBe(1);
+      expect(result.result.skipped).toBe(1);
+      expect(result.result.failed).toBe(0);
+
+      const missingCountRow = harness.db
+        .prepare(
+          `
+        SELECT COUNT(*) AS missing
+        FROM offers
+        WHERE provider_url IS NULL OR TRIM(provider_url) = ''
+      `,
+        )
+        .get() as { missing: number };
+
+      const missingSamples = harness.db
+        .prepare(
+          `
+        SELECT id, provider, provider_url, created_at
+        FROM offers
+        WHERE provider_url IS NULL OR TRIM(provider_url) = ''
+        LIMIT 20
+      `,
+        )
+        .all() as Array<{
+        id: number;
+        provider: string;
+        provider_url: string | null;
+        created_at: string | null;
+      }>;
+
+      expect(
+        missingCountRow.missing,
+        `Missing provider_url rows: ${JSON.stringify(missingSamples)}`,
+      ).toBe(0);
+      expect(missingSamples).toHaveLength(0);
+
+      const persistedMissingUrlOffer = getOfferByProviderId(
+        "infojobs",
+        "url-missing-1",
+      );
+      expect(persistedMissingUrlOffer).toBeUndefined();
     });
   });
 });

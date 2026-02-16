@@ -4,6 +4,7 @@
  * Applies SQL migrations from migrations/ directory in order.
  */
 
+import "@/bootstrap/env";
 import { readdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { openDb, closeDb } from "./connection";

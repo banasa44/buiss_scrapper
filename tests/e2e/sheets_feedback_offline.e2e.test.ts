@@ -236,7 +236,7 @@ X6LloxV8OuZpUXhq0/ihp0JY
                 "Ofertas fuertes",
                 "Ofertas únicas",
                 "Actividad publicaciones",
-                "Score fuerte medio",
+                "URL Oferta Top",
                 "Categoría top",
                 "Última señal fuerte",
                 "Feedback Modelo",

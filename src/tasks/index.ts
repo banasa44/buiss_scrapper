@@ -13,19 +13,18 @@ import { DirectoryIngestionTask } from "./directoryIngestionTask";
 import { AtsDiscoveryTask } from "./atsDiscoveryTask";
 import { LeverIngestionTask } from "./leverIngestionTask";
 import { GreenhouseIngestionTask } from "./greenhouseIngestionTask";
-import { SheetsHeaderEnsureTask } from "./sheetsHeaderEnsureTask";
 import { SheetsSyncTask } from "./sheetsSyncTask";
 import { FeedbackApplyTask } from "./feedbackApplyTask";
+import { SheetsHeaderApplyTask } from "./sheetsHeaderApplyTask";
 
 /**
- * All registered tasks across pipeline stages
+ * Automatic pipeline tasks executed by the runner in normal runs.
  *
  * TODO: Add tasks incrementally:
  * - [x] Directory ingestion task
  * - [x] ATS discovery task
  * - [x] Lever ingestion task
  * - [x] Greenhouse ingestion task
- * - [x] Sheets header ensure task
  * - [x] Sheets sync task
  * - [x] Feedback apply task
  *
@@ -36,10 +35,14 @@ export const ALL_TASKS: Task[] = [
   AtsDiscoveryTask,
   LeverIngestionTask,
   GreenhouseIngestionTask,
-  SheetsHeaderEnsureTask,
   SheetsSyncTask,
   FeedbackApplyTask,
 ];
+
+/**
+ * Manual/opt-in tasks that are discoverable by key but never part of normal runner flow.
+ */
+export const MANUAL_TASKS: Task[] = [SheetsHeaderApplyTask];
 
 /**
  * Find a task by its taskKey
@@ -48,7 +51,11 @@ export const ALL_TASKS: Task[] = [
  * @returns The task if found, null otherwise
  */
 export function findTaskByKey(taskKey: string): Task | null {
-  return ALL_TASKS.find((task) => task.taskKey === taskKey) ?? null;
+  return (
+    ALL_TASKS.find((task) => task.taskKey === taskKey) ??
+    MANUAL_TASKS.find((task) => task.taskKey === taskKey) ??
+    null
+  );
 }
 
 /**
@@ -61,14 +68,16 @@ export function findTaskByKey(taskKey: string): Task | null {
  * @throws Error if validation fails
  */
 export function validateTaskRegistry(): void {
+  const allRegisteredTasks = [...ALL_TASKS, ...MANUAL_TASKS];
+
   // Allow empty registry during migration period
-  if (ALL_TASKS.length === 0) {
+  if (allRegisteredTasks.length === 0) {
     return;
   }
 
   const seenKeys = new Set<string>();
 
-  for (const task of ALL_TASKS) {
+  for (const task of allRegisteredTasks) {
     // Check required fields
     if (!task.taskKey) {
       throw new Error("Task missing required field: taskKey");

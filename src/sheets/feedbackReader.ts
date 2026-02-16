@@ -15,7 +15,7 @@ import type { GoogleSheetsClient } from "@/clients/googleSheets";
 import type { CompanyFeedbackReadResult, CompanyResolution } from "@/types";
 import type { NewCompanyFeedbackEvent } from "@/types";
 import { COMPANY_SHEET_READ_RANGE, COMPANY_SHEET_COL_INDEX } from "@/constants";
-import { parseCompanyId, parseResolution } from "@/utils";
+import { parseCompanyId, parseResolution, parseModelFeedback } from "@/utils";
 import { shouldRunFeedbackIngestion } from "./feedbackWindow";
 import * as logger from "@/logger";
 
@@ -196,6 +196,7 @@ export type ModelFeedbackReadResult = {
  * Defensive parsing:
  * - Validates company_id as positive integer
  * - Skips rows with empty/missing MODEL_FEEDBACK value
+ * - Validates MODEL_FEEDBACK against allowed enum values
  * - Allows empty MODEL_NOTES (optional field)
  * - Never throws for data issues (only for API failures)
  *
@@ -289,12 +290,23 @@ export async function readModelFeedbackFromSheet(
       continue;
     }
 
+    const normalizedFeedbackValue = parseModelFeedback(modelFeedbackValue);
+    if (normalizedFeedbackValue === null) {
+      logger.warn("Skipping sheet row with invalid model_feedback value", {
+        rowIndex,
+        companyId,
+        modelFeedbackValue,
+      });
+      invalidRows++;
+      continue;
+    }
+
     // Valid row - create feedback event
     // Normalize notes: use empty string instead of null for stable dedup
     events.push({
       companyId,
       sheetRowIndex: rowIndex,
-      feedbackValue: String(modelFeedbackValue).trim(),
+      feedbackValue: normalizedFeedbackValue,
       notes:
         modelNotesValue && String(modelNotesValue).trim() !== ""
           ? String(modelNotesValue).trim()

@@ -113,6 +113,24 @@ describe("feedbackEventsRepo", () => {
       const notesPresent = events.filter((e) => e.notes !== "");
       expect(notesPresent).toHaveLength(2);
     });
+
+    it("should reject invalid feedback values at persistence boundary", () => {
+      const companyId = upsertCompany({
+        name_raw: "Invalid Feedback Co",
+        name_display: "Invalid Feedback Co",
+        normalized_name: "invalid feedback co",
+        website_domain: "invalid-feedback.com",
+      });
+
+      expect(() =>
+        insertCompanyFeedbackEvent({
+          companyId,
+          sheetRowIndex: 99,
+          feedbackValue: "INVALID" as any,
+          notes: "",
+        }),
+      ).toThrow("Invalid feedback_value");
+    });
   });
 
   describe("getFeedbackEventsByCompanyId", () => {
@@ -164,6 +182,36 @@ describe("feedbackEventsRepo", () => {
       const events2 = getFeedbackEventsByCompanyId(company2);
       expect(events2).toHaveLength(1);
       expect(events2[0].feedbackValue).toBe("FN");
+    });
+
+    it("should filter out legacy rows with invalid feedback_value", () => {
+      const companyId = upsertCompany({
+        name_raw: "Legacy Feedback Co",
+        name_display: "Legacy Feedback Co",
+        normalized_name: "legacy feedback co",
+        website_domain: "legacy-feedback.com",
+      });
+
+      insertCompanyFeedbackEvent({
+        companyId,
+        sheetRowIndex: 30,
+        feedbackValue: "FP",
+        notes: "valid feedback",
+      });
+
+      // Simulate legacy/free-text row bypassing repository validation
+      testDb.db
+        .prepare(
+          `
+          INSERT INTO company_feedback_events (company_id, sheet_row_index, feedback_value, notes)
+          VALUES (?, ?, ?, ?)
+        `,
+        )
+        .run(companyId, 31, "UNKNOWN", "legacy invalid");
+
+      const events = getFeedbackEventsByCompanyId(companyId);
+      expect(events).toHaveLength(1);
+      expect(events[0].feedbackValue).toBe("FP");
     });
   });
 });

@@ -6,7 +6,11 @@
  */
 
 import type { CompanyResolution } from "@/types";
-import { VALID_RESOLUTIONS } from "@/constants/sheets";
+import {
+  VALID_RESOLUTIONS,
+  MODEL_FEEDBACK_VALUES,
+  type ModelFeedbackValue,
+} from "@/constants/sheets";
 
 /**
  * Parse a company_id value from sheet cell
@@ -71,5 +75,37 @@ export function parseResolution(value: unknown): CompanyResolution | null {
   if (VALID_RESOLUTIONS.includes(trimmed as CompanyResolution)) {
     return trimmed as CompanyResolution;
   }
+  return null;
+}
+
+/**
+ * Parse a model feedback value from sheet cell
+ *
+ * Accepts:
+ * - Valid model feedback enum values (case-insensitive)
+ * - Strings with leading/trailing whitespace
+ *
+ * Rejects:
+ * - Invalid feedback values
+ * - Empty strings
+ * - Non-string types
+ *
+ * @param value - Raw cell value from sheet
+ * @returns Parsed model feedback value or null if invalid/empty
+ */
+export function parseModelFeedback(value: unknown): ModelFeedbackValue | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim().toUpperCase();
+  if (trimmed === "") {
+    return null;
+  }
+
+  if (MODEL_FEEDBACK_VALUES.includes(trimmed as ModelFeedbackValue)) {
+    return trimmed as ModelFeedbackValue;
+  }
+
   return null;
 }

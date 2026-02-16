@@ -69,6 +69,26 @@ function computeEffectiveSeenAt(offer: PersistOfferInput["offer"]): string {
 }
 
 /**
+ * Normalize and validate provider URL from offer reference
+ *
+ * Returns null when URL is missing, blank, or not a valid absolute URL.
+ */
+function normalizeProviderUrl(rawUrl: string | undefined): string | null {
+  if (!rawUrl || typeof rawUrl !== "string") return null;
+
+  const trimmed = rawUrl.trim();
+  if (trimmed.length === 0) return null;
+
+  try {
+    // Validate absolute URL shape
+    new URL(trimmed);
+    return trimmed;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Build OfferInput from canonical offer + companyId
  *
  * Maps canonical offer fields to DB schema fields.
@@ -82,11 +102,12 @@ function buildOfferInput(
   offer: PersistOfferInput["offer"],
   provider: Provider,
   companyId: number,
+  providerUrl: string,
 ): OfferInput {
   return {
     provider,
     provider_offer_id: offer.ref.id,
-    provider_url: offer.ref.url ?? null,
+    provider_url: providerUrl,
     company_id: companyId,
     title: offer.title,
     description: "description" in offer ? (offer.description ?? null) : null,
@@ -131,7 +152,18 @@ function buildOfferInput(
 export function persistOffer(input: PersistOfferInput): OfferPersistResult {
   const { offer, provider, companyId: providedCompanyId } = input;
 
-  // Step 0: ATS-only hardening - require description for ATS sources
+  // Step 0: hard invariant - offers must have provider URL
+  const providerUrl = normalizeProviderUrl(offer.ref.url);
+  if (!providerUrl) {
+    logger.debug("Offer skipped: missing provider URL", {
+      provider,
+      offerId: offer.ref.id,
+      rawUrl: offer.ref.url,
+    });
+    return { ok: false, reason: "missing_provider_url" };
+  }
+
+  // Step 0.5: ATS-only hardening - require description for ATS sources
   // ATS sources (Lever, Greenhouse) must provide full details with description
   // InfoJobs and other marketplace sources are exempt from this check
   const isAtsSource = (ATS_PROVIDERS as readonly string[]).includes(provider);
@@ -208,7 +240,7 @@ export function persistOffer(input: PersistOfferInput): OfferPersistResult {
   if (existingOffer) {
     // Same offer seen again - treat as normal update
     // Build offer input and upsert (this updates content if changed)
-    const offerInput = buildOfferInput(offer, provider, companyId);
+    const offerInput = buildOfferInput(offer, provider, companyId, providerUrl);
 
     try {
       const offerId = upsertOffer(offerInput);
@@ -307,7 +339,7 @@ export function persistOffer(input: PersistOfferInput): OfferPersistResult {
     }
 
     // Not a duplicate - proceed with normal insert
-    const offerInput = buildOfferInput(offer, provider, companyId);
+    const offerInput = buildOfferInput(offer, provider, companyId, providerUrl);
     const offerId = upsertOffer(offerInput);
 
     // Set last_seen_at for new canonical offer

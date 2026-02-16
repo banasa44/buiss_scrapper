@@ -7,6 +7,9 @@
 
 import type { CompanyFeedbackEvent, NewCompanyFeedbackEvent } from "@/types";
 import { getDb } from "@/db";
+import { MODEL_FEEDBACK_VALUES } from "@/constants/sheets";
+import { parseModelFeedback } from "@/utils";
+import * as logger from "@/logger";
 
 /**
  * Insert a new company feedback event
@@ -23,6 +26,13 @@ export function insertCompanyFeedbackEvent(
 ): number {
   const db = getDb();
 
+  const normalizedFeedbackValue = parseModelFeedback(event.feedbackValue);
+  if (normalizedFeedbackValue === null) {
+    throw new Error(
+      `Invalid feedback_value "${String(event.feedbackValue)}". Expected one of: ${MODEL_FEEDBACK_VALUES.join(", ")}`,
+    );
+  }
+
   // Normalize notes to empty string (never NULL) for stable deduplication
   const normalizedNotes = event.notes ?? "";
 
@@ -37,7 +47,7 @@ export function insertCompanyFeedbackEvent(
     .run(
       event.companyId,
       event.sheetRowIndex,
-      event.feedbackValue,
+      normalizedFeedbackValue,
       normalizedNotes,
     );
 
@@ -73,12 +83,33 @@ export function getFeedbackEventsByCompanyId(
     created_at: string;
   }>;
 
-  return rows.map((row) => ({
-    id: row.id,
-    companyId: row.company_id,
-    sheetRowIndex: row.sheet_row_index,
-    feedbackValue: row.feedback_value,
-    notes: row.notes,
-    createdAt: new Date(row.created_at),
-  }));
+  const events: CompanyFeedbackEvent[] = [];
+  let skippedInvalidRows = 0;
+
+  for (const row of rows) {
+    const normalizedFeedbackValue = parseModelFeedback(row.feedback_value);
+    if (normalizedFeedbackValue === null) {
+      skippedInvalidRows++;
+      continue;
+    }
+
+    events.push({
+      id: row.id,
+      companyId: row.company_id,
+      sheetRowIndex: row.sheet_row_index,
+      feedbackValue: normalizedFeedbackValue,
+      notes: row.notes,
+      createdAt: new Date(row.created_at),
+    });
+  }
+
+  if (skippedInvalidRows > 0) {
+    logger.debug("Skipping invalid feedback_value rows from read query", {
+      companyId,
+      skippedInvalidRows,
+      allowedValues: MODEL_FEEDBACK_VALUES,
+    });
+  }
+
+  return events;
 }

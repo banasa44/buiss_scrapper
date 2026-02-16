@@ -124,7 +124,7 @@ Phrase scoring behavior:
 - The `version` field is validated and stored in `CatalogRuntime.version` (`src/catalog/loader.ts`), but **not used** to gate, migrate, or trigger reprocessing.
 - Scores are computed at ingestion time and stored in the `matches` table (`src/db/repos/matchesRepo.ts`). There is **no code path** in the repository that automatically recomputes existing scores when the catalog changes.
 - Company aggregation uses stored scores from `matches` (`src/db/repos/offersRepo.ts` + `src/signal/aggregation/aggregateCompany.ts`). Changing the catalog does not automatically update existing aggregated metrics.
-- Sheets export uses the **current** catalog to resolve `top_category_id` into a label (`src/sheets/companyRowMapper.ts`). If a category ID is removed or renamed in the catalog, the exporter will fall back to the raw ID (see `resolveCategoryLabel` in `src/sheets/companyRowMapper.ts`).
+- Sheets export uses the **current** catalog to resolve `top_category_id` into a label (`src/sheets/companyRowMapper.ts`). If a category ID is removed or renamed in the catalog, the exporter will fall back to an empty value (see `resolveCategoryLabel` in `src/sheets/companyRowMapper.ts`).
 
 ## 6) Edge Cases (As Implemented)
 
@@ -136,4 +136,3 @@ Phrase scoring behavior:
 - No stopword removal, stemming, or lemmatization (`src/utils/text/textNormalization.ts`). Exact token sequences are required.
 - Multilingual behavior depends entirely on provided aliases/phrases; there is no language detection or translation. Negation cues are limited to `no`, `sin`, `not`, `without` (`src/constants/negation.ts`).
 - Phrase tiers are validated but currently **ignored** for scoring (all phrases use fixed `PHRASE_BOOST_POINTS` in `src/constants/scoring.ts`).
-

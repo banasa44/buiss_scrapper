@@ -24,7 +24,7 @@
  *   - GOOGLE_SERVICE_ACCOUNT_KEY_FILE: Path to Google service account JSON (optional)
  */
 
-import "dotenv/config";
+import "@/bootstrap/env";
 import { runOnce, runForever } from "./orchestration/runner";
 import * as logger from "./logger";
 

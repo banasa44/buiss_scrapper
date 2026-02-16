@@ -40,10 +40,10 @@ export const COMPANY_SHEET_HEADER_RANGE = `${COMPANY_SHEET_NAME}!A${COMPANY_SHEE
  * This is the SINGLE SOURCE OF TRUTH for the sheet layout.
  * All column indices, headers, and properties are derived from this constant.
  *
- * Schema order (13 columns A-M):
+ * Schema order (12 columns A-L):
  * Per BUILD-3B1 and AUDIT_04 specifications
- * Columns L-M added for model performance feedback
- * Column K added for top_offer_url (clickable offer link)
+ * Columns K-L added for model performance feedback
+ * Column H: top_offer_url replaces avg_strong_score (secondary quality metric)
  *
  * Headers are in Spanish for commercial-facing sheets.
  * resolution, model_feedback, and model_notes are editable by humans.
@@ -85,8 +85,8 @@ export const COMPANY_SHEET_COLUMNS = [
     isEditableByHuman: false,
   },
   {
-    id: "avg_strong_score",
-    header: "Score fuerte medio",
+    id: "top_offer_url",
+    header: "URL Oferta Top",
     isEditableByHuman: false,
   },
   {
@@ -97,11 +97,6 @@ export const COMPANY_SHEET_COLUMNS = [
   {
     id: "last_strong_at",
     header: "Última señal fuerte",
-    isEditableByHuman: false,
-  },
-  {
-    id: "top_offer_url",
-    header: "URL Oferta Top",
     isEditableByHuman: false,
   },
   {
@@ -151,15 +146,15 @@ export const COMPANY_SHEET_FIRST_METRIC_COL_INDEX =
 
 /**
  * Last metric column index (0-based)
- * Corresponds to top_offer_url (column K, index 10)
+ * Corresponds to last_strong_at (column J, index 9)
  */
 export const COMPANY_SHEET_LAST_METRIC_COL_INDEX =
-  COMPANY_SHEET_COL_INDEX.top_offer_url;
+  COMPANY_SHEET_COL_INDEX.last_strong_at;
 
 /**
- * Number of metric columns to update (columns 4-11 in 1-based, indices 3-10)
+ * Number of metric columns to update (columns 4-10 in 1-based, indices 3-9)
  */
-export const COMPANY_SHEET_METRIC_COL_COUNT = 8;
+export const COMPANY_SHEET_METRIC_COL_COUNT = 7;
 
 /**
  * Valid resolution enum values
@@ -200,6 +195,17 @@ export const ACTIVE_RESOLUTIONS = [
   "IN_PROGRESS",
   "HIGH_INTEREST",
 ] as const;
+
+/**
+ * Valid model feedback enum values (column K: "Feedback Modelo")
+ *
+ * Used for:
+ * - Sheets dropdown validation
+ * - Feedback ingestion parsing/normalization
+ * - Persistence boundary validation
+ */
+export const MODEL_FEEDBACK_VALUES = ["OK", "FP", "FN"] as const;
+export type ModelFeedbackValue = (typeof MODEL_FEEDBACK_VALUES)[number];
 
 /**
  * Number of decimal places for score formatting in sheet exports

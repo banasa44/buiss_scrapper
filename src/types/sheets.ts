@@ -4,6 +4,8 @@
  * Types for Google Sheets export/import operations
  */
 
+import type { ModelFeedbackValue } from "@/constants/sheets";
+
 /**
  * Resolution values for company feedback
  * Matches the enum documented in M6 lifecycle spec
@@ -274,8 +276,8 @@ export type CompanyFeedbackEvent = {
   companyId: number;
   /** 1-based row index in sheet (2+ for data rows, used for idempotency) */
   sheetRowIndex: number;
-  /** Feedback value from MODEL_FEEDBACK column (e.g., "FP", "FN", "OK") */
-  feedbackValue: string;
+  /** Feedback value from MODEL_FEEDBACK column */
+  feedbackValue: ModelFeedbackValue;
   /** Optional notes from MODEL_NOTES column */
   notes: string | null;
   /** Timestamp when feedback was recorded */

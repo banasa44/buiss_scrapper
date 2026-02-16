@@ -14,8 +14,10 @@ import * as headerEnforcer from "@/sheets/headerEnforcer";
 import {
   COMPANY_SHEET_FIRST_DATA_ROW,
   COMPANY_SHEET_VALIDATION_MAX_ROW,
+  COMPANY_SHEET_COL_INDEX,
   ACTIVE_RESOLUTIONS,
   RESOLVED_RESOLUTIONS,
+  MODEL_FEEDBACK_VALUES,
 } from "@/constants";
 
 describe("Unit: provisionCompaniesSheet", () => {
@@ -34,7 +36,7 @@ describe("Unit: provisionCompaniesSheet", () => {
     });
   });
 
-  it("should fetch sheetId and apply data validation to Resolution column", async () => {
+  it("should fetch sheetId and apply data validation to Resolution and Feedback Modelo columns", async () => {
     // ========================================================================
     // ARRANGE: Stub client methods
     // ========================================================================
@@ -87,37 +89,79 @@ describe("Unit: provisionCompaniesSheet", () => {
     expect(batchUpdateSpy).toHaveBeenCalledOnce();
 
     const batchUpdateRequest = batchUpdateSpy.mock.calls[0][0];
-    expect(batchUpdateRequest).toHaveLength(1);
+    expect(batchUpdateRequest).toHaveLength(2);
 
-    const validationRequest = batchUpdateRequest[0] as any;
-    expect(validationRequest.setDataValidation).toBeDefined();
+    const resolutionRequest = batchUpdateRequest.find(
+      (request: any) =>
+        request?.setDataValidation?.range?.startColumnIndex ===
+        COMPANY_SHEET_COL_INDEX.resolution,
+    ) as any;
+    const modelFeedbackRequest = batchUpdateRequest.find(
+      (request: any) =>
+        request?.setDataValidation?.range?.startColumnIndex ===
+        COMPANY_SHEET_COL_INDEX.model_feedback,
+    ) as any;
 
-    const validation = validationRequest.setDataValidation;
+    expect(resolutionRequest?.setDataValidation).toBeDefined();
+    expect(modelFeedbackRequest?.setDataValidation).toBeDefined();
 
-    // Verify sheetId (from lookup)
-    expect(validation.range.sheetId).toBe(123);
+    const resolutionValidation = resolutionRequest.setDataValidation;
+    const modelFeedbackValidation = modelFeedbackRequest.setDataValidation;
 
-    // Verify range (column C, rows 2-1000)
-    expect(validation.range.startRowIndex).toBe(
+    // Verify sheetId and row range (shared)
+    expect(resolutionValidation.range.sheetId).toBe(123);
+    expect(modelFeedbackValidation.range.sheetId).toBe(123);
+    expect(resolutionValidation.range.startRowIndex).toBe(
       COMPANY_SHEET_FIRST_DATA_ROW - 1,
     );
-    expect(validation.range.endRowIndex).toBe(COMPANY_SHEET_VALIDATION_MAX_ROW);
-    expect(validation.range.startColumnIndex).toBe(2); // Column C
-    expect(validation.range.endColumnIndex).toBe(3);
-
-    // Verify validation rule
-    const rule = validation.rule;
-    expect(rule.condition.type).toBe("ONE_OF_LIST");
-    expect(rule.condition.values).toHaveLength(
-      ACTIVE_RESOLUTIONS.length + RESOLVED_RESOLUTIONS.length,
+    expect(modelFeedbackValidation.range.startRowIndex).toBe(
+      COMPANY_SHEET_FIRST_DATA_ROW - 1,
+    );
+    expect(resolutionValidation.range.endRowIndex).toBe(
+      COMPANY_SHEET_VALIDATION_MAX_ROW,
+    );
+    expect(modelFeedbackValidation.range.endRowIndex).toBe(
+      COMPANY_SHEET_VALIDATION_MAX_ROW,
     );
 
-    const expectedValues = [...ACTIVE_RESOLUTIONS, ...RESOLVED_RESOLUTIONS];
-    expectedValues.forEach((value, index) => {
-      expect(rule.condition.values![index].userEnteredValue).toBe(value);
+    // Verify resolution column range and values
+    expect(resolutionValidation.range.startColumnIndex).toBe(
+      COMPANY_SHEET_COL_INDEX.resolution,
+    );
+    expect(resolutionValidation.range.endColumnIndex).toBe(
+      COMPANY_SHEET_COL_INDEX.resolution + 1,
+    );
+    expect(resolutionValidation.rule.condition.type).toBe("ONE_OF_LIST");
+    expect(resolutionValidation.rule.condition.values).toHaveLength(
+      ACTIVE_RESOLUTIONS.length + RESOLVED_RESOLUTIONS.length,
+    );
+    const expectedResolutionValues = [...ACTIVE_RESOLUTIONS, ...RESOLVED_RESOLUTIONS];
+    expectedResolutionValues.forEach((value, index) => {
+      expect(
+        resolutionValidation.rule.condition.values![index].userEnteredValue,
+      ).toBe(value);
     });
 
-    expect(rule.strict).toBe(true);
-    expect(rule.showCustomUi).toBe(true);
+    // Verify model feedback column range and values
+    expect(modelFeedbackValidation.range.startColumnIndex).toBe(
+      COMPANY_SHEET_COL_INDEX.model_feedback,
+    );
+    expect(modelFeedbackValidation.range.endColumnIndex).toBe(
+      COMPANY_SHEET_COL_INDEX.model_feedback + 1,
+    );
+    expect(modelFeedbackValidation.rule.condition.type).toBe("ONE_OF_LIST");
+    expect(modelFeedbackValidation.rule.condition.values).toHaveLength(
+      MODEL_FEEDBACK_VALUES.length,
+    );
+    MODEL_FEEDBACK_VALUES.forEach((value, index) => {
+      expect(
+        modelFeedbackValidation.rule.condition.values![index].userEnteredValue,
+      ).toBe(value);
+    });
+
+    expect(resolutionValidation.rule.strict).toBe(true);
+    expect(modelFeedbackValidation.rule.strict).toBe(true);
+    expect(resolutionValidation.rule.showCustomUi).toBe(true);
+    expect(modelFeedbackValidation.rule.showCustomUi).toBe(true);
   });
 });

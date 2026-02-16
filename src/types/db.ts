@@ -149,7 +149,7 @@ export type Offer = {
 export type OfferInput = {
   provider: string;
   provider_offer_id: string;
-  provider_url?: string | null;
+  provider_url: string;
   company_id: number;
   title: string;
   description?: string | null;

@@ -96,7 +96,7 @@ Document the company metric columns selected for Google Sheets export, based on 
 - Category resolved from the offer that produced `max_score`
 - Tie-breaker: most recent offer timestamp (publishedAt > updatedAt)
 - Helps client understand "what kind of jobs" the company posts
-- Fallback to raw `top_category_id` if catalog lookup fails
+- Fallback to empty string if catalog lookup fails
 - Semi-stable: category IDs from catalog may evolve (but unlikely to break)
 
 ---
@@ -209,7 +209,7 @@ When implementing the company-to-row mapper in BUILD-4:
 
 4. **Category resolution:**
    - Map `top_category_id` to human-readable label from catalog
-   - Fallback to raw ID if catalog lookup fails
+   - Fallback to empty string if catalog lookup fails
 
 ---
 
