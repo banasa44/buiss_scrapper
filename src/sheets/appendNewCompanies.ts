@@ -16,9 +16,59 @@ import {
   COMPANY_SHEET_COLUMNS,
   COMPANY_SHEET_COL_INDEX,
   COMPANY_SHEET_READ_RANGE,
+  VALID_RESOLUTIONS,
   SHEETS_APPEND_BATCH_SIZE,
 } from "@/constants";
+import { colIndexToLetter } from "@/utils";
 import { info, warn, error } from "@/logger";
+
+/**
+ * Resolution column index (0-based for Google Sheets API)
+ */
+const RESOLUTION_COLUMN_INDEX = COMPANY_SHEET_COL_INDEX.resolution;
+
+type AppendedRowBounds = {
+  firstRow: number;
+  lastRow: number;
+};
+
+/**
+ * Parse appended row bounds from Sheets A1 updatedRange (e.g., "Companies!A12:L20")
+ */
+function parseUpdatedRangeRowBounds(
+  updatedRange: string,
+): AppendedRowBounds | null {
+  const sheetSeparatorIndex = updatedRange.lastIndexOf("!");
+  const a1Range =
+    sheetSeparatorIndex >= 0
+      ? updatedRange.slice(sheetSeparatorIndex + 1)
+      : updatedRange;
+
+  const [startCell, endCell] = a1Range.split(":");
+  if (!startCell || !endCell) {
+    return null;
+  }
+
+  const startRowMatch = startCell.match(/(\d+)$/);
+  const endRowMatch = endCell.match(/(\d+)$/);
+  if (!startRowMatch || !endRowMatch) {
+    return null;
+  }
+
+  const firstRow = Number(startRowMatch[1]);
+  const lastRow = Number(endRowMatch[1]);
+
+  if (
+    !Number.isInteger(firstRow) ||
+    !Number.isInteger(lastRow) ||
+    firstRow < COMPANY_SHEET_FIRST_DATA_ROW ||
+    lastRow < firstRow
+  ) {
+    return null;
+  }
+
+  return { firstRow, lastRow };
+}
 
 /**
  * Append new companies to sheet (skip existing)
@@ -49,8 +99,6 @@ export async function appendNewCompaniesToSheet(
   // Step 1: Read existing sheet index
   const sheetResult = await readCompanySheet(client);
   const existingCompanyIds = new Set(sheetResult.index.keys());
-  const existingDataRowsBeforeAppend =
-    sheetResult.validRows + sheetResult.skippedRows;
 
   info("Read company sheet index", {
     existingCompanies: existingCompanyIds.size,
@@ -122,6 +170,8 @@ export async function appendNewCompaniesToSheet(
 
   // Step 5: Append in batches
   let appendedCount = 0;
+  let firstAppendedRow: number | null = null;
+  let lastAppendedRow: number | null = null;
 
   for (let i = 0; i < rowsToAppend.length; i += SHEETS_APPEND_BATCH_SIZE) {
     const batch = rowsToAppend.slice(i, i + SHEETS_APPEND_BATCH_SIZE);
@@ -156,6 +206,34 @@ export async function appendNewCompaniesToSheet(
       };
     }
 
+    const batchRowBounds = parseUpdatedRangeRowBounds(
+      appendResult.data.updates.updatedRange,
+    );
+
+    if (!batchRowBounds) {
+      error("Failed to parse appended row bounds from updatedRange", {
+        batchNumber,
+        updatedRange: appendResult.data.updates.updatedRange,
+      });
+      return {
+        ok: false,
+        appendedCount,
+        appendedCompanyIds: appendedCompanyIds.slice(0, appendedCount),
+        skippedCount: totalCompanies - newCompanies.length,
+        totalCompanies,
+        error: `Failed to parse appended row bounds for batch ${batchNumber}`,
+      };
+    }
+
+    firstAppendedRow =
+      firstAppendedRow === null
+        ? batchRowBounds.firstRow
+        : Math.min(firstAppendedRow, batchRowBounds.firstRow);
+    lastAppendedRow =
+      lastAppendedRow === null
+        ? batchRowBounds.lastRow
+        : Math.max(lastAppendedRow, batchRowBounds.lastRow);
+
     appendedCount += batch.length;
   }
 
@@ -168,6 +246,20 @@ export async function appendNewCompaniesToSheet(
       appendedCompanyIds: appendedCompanyIds.slice(0, appendedCount),
       skippedCount: totalCompanies - newCompanies.length,
       totalCompanies,
+    };
+  }
+
+  if (firstAppendedRow === null || lastAppendedRow === null) {
+    error("Missing appended row bounds after successful appends", {
+      appendedCount,
+    });
+    return {
+      ok: false,
+      appendedCount,
+      appendedCompanyIds: appendedCompanyIds.slice(0, appendedCount),
+      skippedCount: totalCompanies - newCompanies.length,
+      totalCompanies,
+      error: "Missing appended row bounds after append operation",
     };
   }
 
@@ -194,12 +286,10 @@ export async function appendNewCompaniesToSheet(
   }
 
   const { sheetId } = templateSheetIdResult.data;
-  const firstAppendedRow =
-    COMPANY_SHEET_FIRST_DATA_ROW + existingDataRowsBeforeAppend;
-  const lastAppendedRow = firstAppendedRow + appendedCount - 1;
   const firstColumnIndex = COMPANY_SHEET_COL_INDEX.company_id;
   const lastColumnExclusiveIndex = COMPANY_SHEET_COLUMNS.length;
   const templateRowStartIndex = COMPANY_SHEET_FIRST_DATA_ROW - 1;
+  const resolutionColumnLetter = colIndexToLetter(RESOLUTION_COLUMN_INDEX);
 
   const sourceRange = {
     sheetId,
@@ -217,6 +307,28 @@ export async function appendNewCompaniesToSheet(
     endColumnIndex: lastColumnExclusiveIndex,
   };
 
+  const resolutionValidationRequest = {
+    setDataValidation: {
+      range: {
+        sheetId,
+        startRowIndex: firstAppendedRow - 1,
+        endRowIndex: lastAppendedRow,
+        startColumnIndex: RESOLUTION_COLUMN_INDEX,
+        endColumnIndex: RESOLUTION_COLUMN_INDEX + 1,
+      },
+      rule: {
+        condition: {
+          type: "ONE_OF_LIST",
+          values: VALID_RESOLUTIONS.map((value) => ({
+            userEnteredValue: value,
+          })),
+        },
+        strict: true,
+        showCustomUi: true,
+      },
+    },
+  };
+
   const propagateResult = await client.applySheetBatchUpdate([
     {
       copyPaste: {
@@ -225,13 +337,7 @@ export async function appendNewCompaniesToSheet(
         pasteType: "PASTE_FORMAT",
       },
     },
-    {
-      copyPaste: {
-        source: sourceRange,
-        destination: destinationRange,
-        pasteType: "PASTE_DATA_VALIDATION",
-      },
-    },
+    resolutionValidationRequest,
   ]);
 
   if (!propagateResult.ok) {
@@ -256,6 +362,7 @@ export async function appendNewCompaniesToSheet(
     firstAppendedRow,
     lastAppendedRow,
     appendedCount,
+    resolutionValidationRange: `${resolutionColumnLetter}${firstAppendedRow}:${resolutionColumnLetter}${lastAppendedRow}`,
   });
 
   // Step 7: Return summary

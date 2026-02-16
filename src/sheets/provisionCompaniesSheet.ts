@@ -16,8 +16,7 @@ import {
   COMPANY_SHEET_FIRST_DATA_ROW,
   COMPANY_SHEET_VALIDATION_MAX_ROW,
   COMPANY_SHEET_COL_INDEX,
-  ACTIVE_RESOLUTIONS,
-  RESOLVED_RESOLUTIONS,
+  VALID_RESOLUTIONS,
   MODEL_FEEDBACK_VALUES,
 } from "@/constants";
 import * as logger from "@/logger";
@@ -69,10 +68,7 @@ export async function provisionCompaniesSheet(
   });
 
   // Step 3: Apply data validation to Resolution and Model Feedback columns
-  const allResolutions = [
-    ...ACTIVE_RESOLUTIONS,
-    ...RESOLVED_RESOLUTIONS,
-  ] as string[];
+  const allResolutions = [...VALID_RESOLUTIONS] as string[];
 
   // Build validation requests for Google Sheets API
   // Per https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/request#SetDataValidationRequest
