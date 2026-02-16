@@ -11,10 +11,7 @@
 
 import type { Company, CompanyAggregationInput } from "@/types";
 import { listCompanyOffersForAggregation } from "@/db/repos/offersRepo";
-import {
-  updateCompanyAggregation,
-  getCompanyById,
-} from "@/db/repos/companiesRepo";
+import { updateCompanyAggregation } from "@/db/repos/companiesRepo";
 import { aggregateCompany } from "./aggregateCompany";
 import { mapCompanyOfferRows } from "./mapCompanyOfferRows";
 

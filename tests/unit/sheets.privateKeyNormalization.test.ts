@@ -118,7 +118,6 @@ describe("normalizePrivateKey", () => {
     });
 
     it("error message never leaks key content", () => {
-      const secretKey = `"-----BEGIN PRIVATE KEY-----\\nsecret123\\n-----END PRIVATE KEY-----\\n"`;
       try {
         // This will fail validation (too short), but shouldn't leak "secret123"
         normalizePrivateKey("secret-data", "TEST_VAR");

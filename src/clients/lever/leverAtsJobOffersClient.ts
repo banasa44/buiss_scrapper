@@ -170,9 +170,6 @@ export class LeverAtsJobOffersClient implements AtsJobOffersClient {
         },
       });
 
-      // Build set of requested offer IDs for filtering
-      const requestedIds = new Set(params.offers.map((offer) => offer.ref.id));
-
       // Create map of posting ID to posting for efficient lookup
       const postingsById = new Map(
         response.map((posting) => [posting.id, posting]),

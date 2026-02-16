@@ -26,7 +26,6 @@ import {
   GOOGLE_OAUTH2_TOKEN_URL,
   GOOGLE_SHEETS_SCOPES,
   GOOGLE_SHEETS_VALUE_INPUT_OPTION_RAW,
-  GOOGLE_SHEETS_INSERT_DATA_OPTION_OVERWRITE,
   GOOGLE_SHEETS_INSERT_DATA_OPTION_INSERT_ROWS,
   GOOGLE_SHEETS_TOKEN_EXPIRY_BUFFER_SECONDS,
   GOOGLE_SHEETS_MS_PER_SECOND,
@@ -35,7 +34,7 @@ import {
   GOOGLE_SHEETS_HTTP_STATUS_SERVER_ERROR_MIN,
 } from "@/constants/clients/googleSheets";
 import * as logger from "@/logger";
-import { createHash, createSign } from "crypto";
+import { createSign } from "crypto";
 import { normalizePrivateKey } from "@/utils/sheets/sheetsHelpers";
 
 /**

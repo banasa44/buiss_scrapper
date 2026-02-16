@@ -7,7 +7,6 @@
 
 import type { JobOfferSummary, JobOfferDetail } from "@/types";
 import type { LeverPosting } from "@/types/clients/lever";
-import * as logger from "@/logger";
 
 /**
  * Build full description from Lever posting content fields

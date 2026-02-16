@@ -197,9 +197,6 @@ export class GreenhouseAtsJobOffersClient implements AtsJobOffersClient {
         },
       });
 
-      // Build set of requested offer IDs for filtering
-      const requestedIds = new Set(params.offers.map((offer) => offer.ref.id));
-
       // Create map of job ID to job for efficient lookup
       const jobsById = new Map(
         response.jobs.map((job) => [String(job.id), job]),

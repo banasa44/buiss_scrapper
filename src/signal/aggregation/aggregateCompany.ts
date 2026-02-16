@@ -10,8 +10,6 @@
  * - docs/M4/03_define_repost_detection.md
  */
 
-import { STRONG_THRESHOLD } from "@/constants";
-
 /**
  * Input: scored offer with canonicalization info
  */

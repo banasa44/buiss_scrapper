@@ -14,7 +14,6 @@ import { describe, it, expect, afterEach } from "vitest";
 import { createTestDbSync, type TestDbHarness } from "../../helpers/testDb";
 import { aggregateCompanyAndPersist } from "@/signal/aggregation/aggregateCompanyAndPersist";
 import { getCompanyById } from "@/db/repos/companiesRepo";
-import { STRONG_THRESHOLD } from "@/constants/scoring";
 
 describe("Company Aggregation Persistence", () => {
   let harness: TestDbHarness | null = null;

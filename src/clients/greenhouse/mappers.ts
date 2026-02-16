@@ -8,7 +8,6 @@
 import type { JobOfferSummary, JobOfferDetail } from "@/types";
 import type { GreenhouseJob } from "@/types/clients/greenhouse";
 import { GREENHOUSE_LIMITS } from "@/constants";
-import * as logger from "@/logger";
 
 /**
  * Extract department/category from Greenhouse metadata

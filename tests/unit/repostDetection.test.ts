@@ -9,7 +9,6 @@
 
 import { describe, it, expect } from "vitest";
 import { detectRepostDuplicate } from "@/signal/repost/repostDetection";
-import { DESC_SIM_THRESHOLD } from "@/constants/repost";
 import type { RepostCandidate } from "@/types/repost";
 
 describe("detectRepostDuplicate", () => {

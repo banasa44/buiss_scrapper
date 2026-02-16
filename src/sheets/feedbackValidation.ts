@@ -13,7 +13,7 @@ import type {
   ValidatedFeedbackChange,
   CompanyResolution,
 } from "@/types";
-import { RESOLVED_RESOLUTIONS, ACTIVE_RESOLUTIONS } from "@/constants";
+import { RESOLVED_RESOLUTIONS } from "@/constants";
 import * as logger from "@/logger";
 
 /**
@@ -26,18 +26,6 @@ import * as logger from "@/logger";
 function isResolved(resolution: CompanyResolution | null): boolean {
   if (resolution === null) return false;
   return (RESOLVED_RESOLUTIONS as readonly string[]).includes(resolution);
-}
-
-/**
- * Check if a resolution is in the "active" category
- * Active = PENDING | IN_PROGRESS | HIGH_INTEREST
- *
- * @param resolution - Resolution value to check
- * @returns true if resolution is informational only
- */
-function isActive(resolution: CompanyResolution | null): boolean {
-  if (resolution === null) return true; // null treated as PENDING (active)
-  return (ACTIVE_RESOLUTIONS as readonly string[]).includes(resolution);
 }
 
 /**

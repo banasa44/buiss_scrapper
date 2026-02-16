@@ -16,7 +16,6 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createTestDb, type TestDbHarness } from "../helpers/testDb";
 import { runOfferBatchIngestion } from "@/ingestion";
 import type { JobOfferDetail } from "@/types";
-import * as offersRepo from "@/db/repos/offersRepo";
 import * as companiesRepo from "@/db/repos/companiesRepo";
 import { STRONG_THRESHOLD } from "@/constants/scoring";
 

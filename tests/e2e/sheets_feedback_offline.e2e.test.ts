@@ -199,7 +199,7 @@ X6LloxV8OuZpUXhq0/ihp0JY
 -----END PRIVATE KEY-----`;
 
     // Mock OAuth2 token endpoint
-    mockFetch.mockImplementation(async (url: string, options?: RequestInit) => {
+    mockFetch.mockImplementation(async (url: string) => {
       const urlString = url.toString();
 
       // OAuth2 token request
