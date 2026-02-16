@@ -52,16 +52,30 @@ describe("Integration flow: directory -> ATS discovery -> ATS ingestion (offline
   });
 
   it("persists discovered companies, detected ATS sources, and final offers with idempotent pipelines", async () => {
-    const cataloniaHtml = [
-      loadFixtureText("directories/catalonia.html"),
-      '<a href="https://www.rackspace.com">Rackspace</a>',
-      '<a href="https://www.linkedin.com/company/rackspace">Rackspace LinkedIn</a>',
-    ].join("\n");
+    const cataloniaHtml = `
+      <li class="item col-12 col-md-4">
+        <div class="bloque">
+          <h3 class="small_title">Rackspace</h3>
+          <a class="link_all" href="/startup/barcelona/rackspace/9999/">
+            <span class="sr-only">Rackspace</span>
+          </a>
+        </div>
+      </li>
+      <a href="/contact">Contact</a>
+      <a href="/legal-notice">Legal notice</a>
+    `;
 
-    const madrimasdListHtml = [
-      loadFixtureText("directories/madrimasd_list.html"),
-      '<a href="/emprendedores/empresa/detalle/40100-frikiring/">Frikiring</a>',
-    ].join("\n");
+    const madrimasdListHtml = `
+      <a href="/contacto">Contact</a>
+      <li class="element-list">
+        <h3>Frikiring</h3>
+        <a href="/emprendedores/emprendedores-casos-exito/frikiring/?utm_source=directory#top">Open profile</a>
+      </li>
+      <li class="element-list">
+        <h3>Share on WhatsApp</h3>
+        <a href="/emprendedores/emprendedores-casos-exito/share-on-whatsapp/extra">Open profile</a>
+      </li>
+    `;
 
     const madrimasdDetailHtml =
       '<a href="https://democorp.com">Sitio oficial</a>';
@@ -71,12 +85,17 @@ describe("Integration flow: directory -> ATS discovery -> ATS ingestion (offline
     mockHttp.on("GET", DIRECTORY_DISCOVERY.SEED_URLS.CATALONIA, cataloniaHtml);
     mockHttp.on(
       "GET",
+      "https://startupshub.catalonia.com/startup/barcelona/rackspace/9999",
+      '<a href="https://www.rackspace.com">Official website</a>',
+    );
+    mockHttp.on(
+      "GET",
       DIRECTORY_DISCOVERY.SEED_URLS.MADRIMASD,
       madrimasdListHtml,
     );
     mockHttp.on(
       "GET",
-      "https://startups.madrimasd.org/emprendedores/empresa/detalle/40100-frikiring/",
+      "https://startups.madrimasd.org/emprendedores/emprendedores-casos-exito/frikiring",
       madrimasdDetailHtml,
     );
     mockHttp.on("GET", DIRECTORY_DISCOVERY.SEED_URLS.LANZADERA, lanzaderaHtml);

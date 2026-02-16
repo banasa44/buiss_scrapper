@@ -67,7 +67,7 @@ export const DIRECTORY_DISCOVERY = {
        * Each source can specify which internal paths to follow
        */
       DETAIL_PATH_PATTERNS: {
-        MADRIMASD: "/emprendedores/empresa/detalle/",
+        MADRIMASD: "/emprendedores/emprendedores-casos-exito",
         // Note: Lanzadera uses custom structural matching (not pattern-based)
         // Pattern would be too broad ("/proyectos/") and match listing itself
       },

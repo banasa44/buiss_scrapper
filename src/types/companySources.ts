@@ -40,7 +40,7 @@ export type DirectoryPipelineConfig = {
   /**
    * URL path patterns that identify company detail pages
    * Only internal URLs matching any of these patterns will be fetched
-   * Example: ["/emprendedores/empresa/detalle/"] for Madri+d
+   * Example: ["/emprendedores/emprendedores-casos-exito"] for Madri+d
    *
    * Ignored if isDetailUrl is provided (custom predicate takes precedence)
    */
