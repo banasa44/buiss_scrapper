@@ -135,38 +135,38 @@ export async function updateCompanyMetricsInSheet(
     const batch = updateOps.slice(i, i + SHEETS_UPDATE_BATCH_SIZE);
     const batchNumber = Math.floor(i / SHEETS_UPDATE_BATCH_SIZE) + 1;
     const totalBatches = Math.ceil(updateOps.length / SHEETS_UPDATE_BATCH_SIZE);
+    const rangeUpdates = batch.map((op) => ({
+      range: buildMetricUpdateRange(op.rowIndex),
+      values: [op.metricValues],
+    }));
 
     info("Updating metric batch in sheet", {
       batchNumber,
       totalBatches,
       batchSize: batch.length,
+      rangeCount: rangeUpdates.length,
     });
 
-    // Update each row individually (batchUpdate expects contiguous range)
-    for (const op of batch) {
-      const range = buildMetricUpdateRange(op.rowIndex);
-      const values = [op.metricValues]; // Single row
+    const updateResult = await client.batchUpdateRanges(rangeUpdates);
 
-      const updateResult = await client.batchUpdate(values, range);
-
-      if (!updateResult.ok) {
-        error("Failed to update metrics for company row", {
-          rowIndex: op.rowIndex,
-          range,
-          error: updateResult.error,
-        });
-        return {
-          ok: false,
-          updatedCount,
-          updatedCompanyIds: updatedCompanyIds.slice(0, updatedCount),
-          skippedCount: totalCompanies - existingCompanies.length,
-          totalCompanies,
-          error: `Failed to update row ${op.rowIndex}: ${updateResult.error?.message || "Unknown error"}`,
-        };
-      }
-
-      updatedCount++;
+    if (!updateResult.ok) {
+      error("Failed to update metrics batch in sheet", {
+        batchNumber,
+        totalBatches,
+        rangeCount: rangeUpdates.length,
+        error: updateResult.error,
+      });
+      return {
+        ok: false,
+        updatedCount,
+        updatedCompanyIds: updatedCompanyIds.slice(0, updatedCount),
+        skippedCount: totalCompanies - existingCompanies.length,
+        totalCompanies,
+        error: `Failed to update metric batch ${batchNumber}: ${updateResult.error?.message || "Unknown error"}`,
+      };
     }
+
+    updatedCount += batch.length;
   }
 
   // Step 6: Return summary

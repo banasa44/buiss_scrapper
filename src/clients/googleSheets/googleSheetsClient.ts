@@ -11,6 +11,8 @@ import type {
   GoogleSheetsErrorDetails,
   SheetReadResult,
   SheetWriteResult,
+  SheetBatchWriteResult,
+  SheetRangeValueUpdate,
   SheetAppendResult,
   GoogleOAuth2TokenResponse,
   SheetOperationResult,
@@ -506,6 +508,74 @@ export class GoogleSheetsClient {
       logger.error("Failed to update Google Sheets range", {
         spreadsheetId: this.spreadsheetId,
         range,
+        error: errorDetails,
+      });
+
+      return {
+        ok: false,
+        error: errorDetails,
+      };
+    }
+  }
+
+  /**
+   * Batch update values across multiple ranges in one API call
+   *
+   * Uses spreadsheets.values.batchUpdate endpoint to reduce write request count.
+   *
+   * @param updates - List of range/value updates (A1 notation per range)
+   * @returns SheetOperationResult with aggregated update statistics or error details
+   */
+  async batchUpdateRanges(
+    updates: SheetRangeValueUpdate[],
+  ): Promise<SheetOperationResult<SheetBatchWriteResult>> {
+    logger.debug("Batch updating Google Sheets ranges", {
+      spreadsheetId: this.spreadsheetId,
+      rangeCount: updates.length,
+      rowCount: updates.reduce(
+        (totalRows, update) => totalRows + update.values.length,
+        0,
+      ),
+    });
+
+    try {
+      const endpoint = `/spreadsheets/${this.spreadsheetId}/values:batchUpdate`;
+      const response = await this.apiRequest<{
+        totalUpdatedRows: number;
+        totalUpdatedColumns: number;
+        totalUpdatedCells: number;
+        totalUpdatedSheets?: number;
+        responses?: unknown[];
+      }>(endpoint, {
+        method: "POST",
+        body: JSON.stringify({
+          valueInputOption: GOOGLE_SHEETS_VALUE_INPUT_OPTION_RAW,
+          data: updates,
+        }),
+      });
+
+      return {
+        ok: true,
+        data: {
+          totalUpdatedRows: response.totalUpdatedRows,
+          totalUpdatedColumns: response.totalUpdatedColumns,
+          totalUpdatedCells: response.totalUpdatedCells,
+          totalUpdatedSheets: response.totalUpdatedSheets,
+          responsesCount: response.responses?.length ?? 0,
+        },
+      };
+    } catch (error) {
+      const errorDetails: GoogleSheetsErrorDetails =
+        error instanceof GoogleSheetsError
+          ? error.details
+          : {
+              message: error instanceof Error ? error.message : String(error),
+              spreadsheetId: this.spreadsheetId,
+            };
+
+      logger.error("Failed to batch update Google Sheets ranges", {
+        spreadsheetId: this.spreadsheetId,
+        rangeCount: updates.length,
         error: errorDetails,
       });
 

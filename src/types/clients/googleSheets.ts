@@ -62,6 +62,25 @@ export type SheetWriteResult = {
 };
 
 /**
+ * Multi-range values update payload for spreadsheets.values.batchUpdate
+ */
+export type SheetRangeValueUpdate = {
+  range: string;
+  values: unknown[][];
+};
+
+/**
+ * Result type for multi-range values batch updates
+ */
+export type SheetBatchWriteResult = {
+  totalUpdatedRows: number;
+  totalUpdatedColumns: number;
+  totalUpdatedCells: number;
+  totalUpdatedSheets?: number;
+  responsesCount: number;
+};
+
+/**
  * Result type for append operations
  */
 export type SheetAppendResult = {
